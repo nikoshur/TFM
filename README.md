@@ -8,4 +8,4 @@ Modelo basado en agentes (MBA) que emula la actividad de distintos promotores in
 
 Master's Dissertation for the Master’s Degree in Geographical Information Technologies of the University of Alcala
 
-Agent Based Model (ABM) that emulates the activity of diferent house developers that operate in the Corridor of Henares.
+Agent Based Model (ABM) that emulates the activity of diferent house developers that operate in the Corridor of Henares
