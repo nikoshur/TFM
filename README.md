@@ -1,2 +1,11 @@
 # TFM
-Trabajo Fin de Máster (Tecnologías de la Información Geográfica por la  Universidad de Alcalá de Henares) sobre ABM de actividad de promotores inmobiliarios en el Corredor del Henares
+
+Trabajo Fin de Máster para el Máster en Tecnologías de la Información Geográfica por la  Universidad de Alcalá de Henares
+
+Modelo basado en agentes (MBA) que emula la actividad de distintos promotores inmobiliarios en el Corredor del Henares.
+
+# MD
+
+Master's Dissertation for the Master’s Degree in Geographical Information Technologies othe the University of Alcala
+
+Agent Based Model (ABM) that emulates the activity of diferent house developers that operate in the Corridor of Henares.
