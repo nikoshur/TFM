@@ -2,7 +2,7 @@
 
 Trabajo Fin de Máster para el Máster en Tecnologías de la Información Geográfica por la  Universidad de Alcalá de Henares
 
-Modelo Basado en Agentes (MBA) que emula la actividad de distintos promotores inmobiliarios en el Corredor del Henares.
+Modelo Basado en Agentes (MBA) que emula la actividad de distintos promotores inmobiliarios en el Corredor del Henares
 
 # MD
 
