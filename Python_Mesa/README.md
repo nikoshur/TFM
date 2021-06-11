@@ -23,7 +23,7 @@ Then open your browser to [http://127.0.0.1:8521/](http://127.0.0.1:8521/) and p
 
 * ``promotores_CH/agents.py``: Defines the agents
 * ``promotores_CH/schedule.py``: Defines a custom scheduler
-* ``promotores_CH/model.py``: Defines the promotores_CH Predation model itself
+* ``promotores_CH/model.py``: Defines the promotores_CH house developers model itself
 * ``promotores_CH/server.py``: Sets up the interactive visualization server
 * ``run.py``: Launches a model visualization server.
 
