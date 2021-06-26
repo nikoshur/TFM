@@ -1,330 +1,725 @@
-extensions [gis]
+extensions [ gis palette ]
 
-globals [xmin xmax ymin ymax ;;variables para las coordenadas
+;----------------------------------------------------------------------------------------------------------------
 
-  municipios-dataset area_estudio-dataset dist_urb1-dataset ctra1-dataset ;;variables para cada dataset de entrada
-  rgo_prcvv-dataset ponval-dataset clasfc-dataset nviv-dataset esttp-dataset
-  dsdvv-dataset abriredif-dataset dist_trabajo-dataset dist_zon_verd-dataset
+globals [
 
-  tipo1 tipo2 riesgo1 riesgo2 capacidad_inversion1 capacidad_inversion2
-  ponderacion1 ponderacion2 num_promotoras1 num_promotoras2
+  area_estudio_SHP_dataset ;; shapefile con los municipios del area de estudio
+  area_estudio_dataset ;; municipios en formato raster
 
-  terrdisp num constr-cara constr-media constr-barata constr-ya-cara  ;;variables de funcionamiento interno
-  constr-ya-media constr-ya-barata reiteraciones-sm2 n m _recording-save-file-name ]
+  precio_viviendas_dataset ;; raster con los 3 tipos de viviendas
+  tipo_viviendas_dataset ;; NUEVA CLASIFICACION DE LAS VIVIENDAS
 
-breed [municipios-labels municipio-label]
-breed [promotoras1 promotora1]
-breed [promotoras2 promotora2]
+  zonificacion_dataset ;; zonificacion legal de la zona (tipo 2 = zonas en las que se puede construir)
+
+  dist_urbano_dataset ;; raster con las distancias a las zonas urbanas consolidadas
+  dist_carreteras_dataset ;; raster con las distancias a las carreteras
+  dist_estaciones_dataset ;; raster con la distancia a paradas de tren
+  dist_zonas_trabajo_dataset ;; raster con las distancias a zonas de trabajo
+  dist_zonas_verdes_dataset ;; raster con las distancias a zonas verdes
+
+  demanda_multifamiliar_alto demanda_multifamiliar_medio demanda_multifamiliar_bajo ;; demanda de multi
+  demanda_suplida_multifamiliar_alto demanda_suplida_multifamiliar_medio demanda_suplida_multifamiliar_bajo ;; demandas suplidas por iteracion
+
+  demanda_unifamiliar_alto demanda_unifamiliar_medio demanda_unifamiliar_bajo ;; demanda uni
+  demanda_suplida_unifamiliar_alto demanda_suplida_unifamiliar_medio demanda_suplida_unifamiliar_bajo ;; demandas suplidas por iteracion
+
+  ;; VARIABLES PARA ESTABLECER LAS DISTINTAS PONDERACIONES PARA CADA TIPO DE EDIFICACION
+  preferencia_urb_conso_alto_multi_p1
+  preferencia_carretera_alto_multi_p1
+  preferencia_trans_pub_alto_multi_p1
+  preferencia_zonas_tr_alto_multi_p1
+  preferencia_zonas_ver_alto_multi_p1
+
+  preferencia_urb_conso_bajo_multi_p1
+  preferencia_carretera_bajo_multi_p1
+  preferencia_trans_pub_bajo_multi_p1
+  preferencia_zonas_tr_bajo_multi_p1
+  preferencia_zonas_ver_bajo_multi_p1
+
+  preferencia_urb_conso_medio_multi_p1
+  preferencia_carretera_medio_multi_p1
+  preferencia_trans_pub_medio_multi_p1
+  preferencia_zonas_tr_medio_multi_p1
+  preferencia_zonas_ver_medio_multi_p1
+
+  preferencia_urb_conso_alto_uni_p1
+  preferencia_carretera_alto_uni_p1
+  preferencia_trans_pub_alto_uni_p1
+  preferencia_zonas_tr_alto_uni_p1
+  preferencia_zonas_ver_alto_uni_p1
+
+  preferencia_urb_conso_medio_uni_p1
+  preferencia_carretera_medio_uni_p1
+  preferencia_trans_pub_medio_uni_p1
+  preferencia_zonas_tr_medio_uni_p1
+  preferencia_zonas_ver_medio_uni_p1
+
+  preferencia_urb_conso_alto_multi_p2
+  preferencia_carretera_alto_multi_p2
+  preferencia_trans_pub_alto_multi_p2
+  preferencia_zonas_tr_alto_multi_p2
+  preferencia_zonas_ver_alto_multi_p2
+
+  preferencia_urb_conso_bajo_multi_p2
+  preferencia_carretera_bajo_multi_p2
+  preferencia_trans_pub_bajo_multi_p2
+  preferencia_zonas_tr_bajo_multi_p2
+  preferencia_zonas_ver_bajo_multi_p2
+
+  preferencia_urb_conso_medio_multi_p2
+  preferencia_carretera_medio_multi_p2
+  preferencia_trans_pub_medio_multi_p2
+  preferencia_zonas_tr_medio_multi_p2
+  preferencia_zonas_ver_medio_multi_p2
+
+  preferencia_urb_conso_alto_uni_p2
+  preferencia_carretera_alto_uni_p2
+  preferencia_trans_pub_alto_uni_p2
+  preferencia_zonas_tr_alto_uni_p2
+  preferencia_zonas_ver_alto_uni_p2
+
+  preferencia_urb_conso_medio_uni_p2
+  preferencia_carretera_medio_uni_p2
+  preferencia_trans_pub_medio_uni_p2
+  preferencia_zonas_tr_medio_uni_p2
+  preferencia_zonas_ver_medio_uni_p2
+
+]
+
+;----------------------------------------------------------------------------------------------------------------
+
+breed [ nombres_municipios nombre_municipio ]
+breed [ promotoras1 promotora1 ]
+breed [ promotoras2 promotora2 ]
+
+;----------------------------------------------------------------------------------------------------------------
 
 patches-own [
 
-  area_estudio dist_urb1 ctra1
-  aux_dist_plgro3 prioridad prioridad1
+  area_estudio ;; variable de area de estudio
+  zonificacion ;; variable para acceder a la zonificacion
 
-  d0_rgo_prcvv d1_clasfc g3_nviv f2_esttp f4_dsdvv g7_ponval3 f8_dist_tr f9_dist_zon_verd
+  dist_urbano ;; variable para guardar las distancias a las zonas urbanas consolidadas
+  dist_carreteras ;; variable para guardar las distancias a las carreteras
+  dist_estaciones ;; variable para guardar las distancias a las estaciones de tren
+  dist_zonas_trabajo ;; variable para guardar las distancias a las zonas de trabajo
+  dist_zonas_verdes ;; variable para guardar las distancias a las zonas verdes
 
-  modificado
-  nviv
-  nuevaviv
-  numedif
+  precio_viviendas ;; clasificacion del pixel segun tipologia de precios
+  tipo_viviendas ;; clasificacion del pixel en funcion de si es uni, multi o vacante
 
-  abriredif
+  disponible ;; variable que define si es posible construir en el pixel o no
+  modificado ;; variable que define si el pixel ha sido modificado o no
+
+  ;; valores de aptitud de cada tipo de edificacion para las promotoras tipo 1
+  aptitud_multi_alto_p1
+  aptitud_multi_medio_p1
+  aptitud_multi_bajo_p1
+  aptitud_uni_alto_p1
+  aptitud_uni_medio_p1
+
+  ;; valores de aptitud de cada tipo de edificacion para las promotoras tipo 2
+  aptitud_multi_alto_p2
+  aptitud_multi_medio_p2
+  aptitud_multi_bajo_p2
+  aptitud_uni_alto_p2
+  aptitud_uni_medio_p2
 
   ]
 
-promotoras1-own[
-  tipo
-  riesgo
-  capacidad_inversion
-  ponderacion
-  ]
+promotoras1-own [
 
-promotoras2-own[
-  tipo
-  riesgo
-  capacidad_inversion
-  ponderacion
-  ]
+  area_influencia
+  radio_busqueda
+  mejor_aptitud
+  pixel_deseado
 
+]
 
-;################################ TO SETUP ############################################
+promotoras2-own [
 
-;fija los limites, dibuja el fondo configurado y carga los municipios:
+  area_influencia
+  radio_busqueda
+  mejor_aptitud
+  pixel_deseado
+  especialidad
 
-to setup
+]
+
+;------------------------------------------------------------------------------------------------------------------
+
+;##################################################################################################################
+;####################################  FUNCION DE INICIALIZACIÓIN  ################################################
+;##################################################################################################################
+
+;; inicializa el ABM, cargando todos los datos y mostrando el area de estudio
+
+to inicio
+
   __clear-all-and-reset-ticks
 
-  set municipios-dataset     gis:load-dataset "AEstudio_ok.shp"
-  set area_estudio-dataset   gis:load-dataset "A0_AEstd.ASC"
-  set dist_urb1-dataset      gis:load-dataset "c3_disturb.asc"
-  set ctra1-dataset          gis:load-dataset "c4_distcrt.asc"
-  set rgo_prcvv-dataset      gis:load-dataset "d0b_rgoprcvv_5.asc"
-  set ponval-dataset         gis:load-dataset "g7_ponval3.asc"
-  set clasfc-dataset         gis:load-dataset "d1_clasfc_2.asc"
-  set nviv-dataset           gis:load-dataset "g3_nviv.asc"
-  set esttp-dataset          gis:load-dataset "f2-esttp_3.asc"
-  set dsdvv-dataset          gis:load-dataset "f4_dsdvv_5.asc"
-  set dist_trabajo-dataset   gis:load-dataset "f8_dist_tr_7.asc"
-  set dist_zon_verd-dataset  gis:load-dataset "f9_dist_zon_verd_9.asc"
+  set area_estudio_SHP_dataset         gis:load-dataset "Area_estudio.shp"
+  set area_estudio_dataset             gis:load-dataset "ae_asc_25_c.asc"
+  set precio_viviendas_dataset         gis:load-dataset "pviv_25_c.asc"
+  set zonificacion_dataset             gis:load-dataset "zon_leg_25_c.asc"
+  set dist_urbano_dataset              gis:load-dataset "d_au_25_c_i_n.asc"
+  set dist_carreteras_dataset          gis:load-dataset "d_ca_25_c_i_n.asc"
+  set dist_estaciones_dataset          gis:load-dataset "d_est_25_c_r.asc"
+  set dist_zonas_trabajo_dataset       gis:load-dataset "d_zt_25_c_i_n.asc"
+  set dist_zonas_verdes_dataset        gis:load-dataset "d_zv_25_c_i_n.asc"
+  set tipo_viviendas_dataset           gis:load-dataset "resi_class_c.asc"
+
+  gis:set-world-envelope (gis:envelope-of area_estudio_dataset)
+
+  gis:apply-raster area_estudio_dataset             area_estudio
+  gis:apply-raster precio_viviendas_dataset         precio_viviendas
+  gis:apply-raster zonificacion_dataset             zonificacion
+  gis:apply-raster dist_urbano_dataset              dist_urbano
+  gis:apply-raster dist_carreteras_dataset          dist_carreteras
+  gis:apply-raster dist_estaciones_dataset          dist_estaciones
+  gis:apply-raster dist_zonas_trabajo_dataset       dist_zonas_trabajo
+  gis:apply-raster dist_zonas_verdes_dataset        dist_zonas_verdes
+  gis:apply-raster tipo_viviendas_dataset           tipo_viviendas
+
+  ask patches with [(area_estudio > 0) and (zonificacion = 2) and (tipo_viviendas = 1)][
+    set disponible 1
+  ]
+
+  mostrar_area_estudio
+
+end
+
+;-----------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------
+
+;#################################################################################################################
+;#########################  FUNCIONES DE VISUALIZACIOON DE DATOS DE ENTRADA  #####################################
+;#################################################################################################################
+
+;-----------------------------------------------------------------------------------------------------------------
+;-----------------------------------------------------------------------------------------------------------------
 
 
-  gis:set-world-envelope (gis:envelope-of area_estudio-dataset)
-  gis:apply-raster area_estudio-dataset   area_estudio
-  gis:apply-raster dist_urb1-dataset      dist_urb1
-  gis:apply-raster ctra1-dataset          ctra1
-  gis:apply-raster rgo_prcvv-dataset      d0_rgo_prcvv
-  gis:apply-raster ponval-dataset         g7_ponval3
-  gis:apply-raster clasfc-dataset         d1_clasfc
-  gis:apply-raster nviv-dataset           g3_nviv
-  gis:apply-raster esttp-dataset          f2_esttp
-  gis:apply-raster dsdvv-dataset          f4_dsdvv
-  gis:apply-raster dist_trabajo-dataset   f8_dist_tr
-  gis:apply-raster dist_zon_verd-dataset  f9_dist_zon_verd
+;######################################  MOSTRAR AREA DE ESTUDIO  ################################################
+;; muestra el área de estudio, junto con los nombres
 
+to mostrar_area_estudio
+
+  ask nombres_municipios [ die ]
   ask patches with [area_estudio > 0] [set pcolor 49]
   ask patches with [area_estudio <= 0] [set pcolor white]
 
-  ask patches [
-    set nviv g3_nviv
-    set nuevaviv 0
-    ]
-
-
-display-municipios
+  gis:draw area_estudio_SHP_dataset 1
+  foreach gis:feature-list-of area_estudio_SHP_dataset [ ?1 -> gis:set-drawing-color black
+  let centroid gis:location-of gis:centroid-of ?1
+       if not empty? centroid
+       [ create-nombres_municipios 1
+         [ set xcor item 0 centroid
+           set ycor item 1 centroid
+           set size 1
+           set label-color black
+           set label gis:property-value ?1 "nombres"
+         ]
+       ]
+  ]
 end
 
-;################################ CREAR PROMOTORAS #####################################
+;------------------------------------------------------------------------------------------------------------------
+
+;###############################################  ZONIFICACION  ###################################################
+;; muestra la zonificacion legal del area de estudio
+
+to mostrar_zonificacion
+
+  ask patches [set pcolor 8] ;; colorear todo el area de gris, se quedará de este color todo lo que no entrene en el resto de categorías
+
+  show (word "Zonas clasificados como ´urbano` (tipo 1): "  count patches with [zonificacion = 1])
+  show (word "Zonas clasificados como ´urbanizable` (tipo 2): "  count patches with [zonificacion = 2])
+  show (word "Zonas clasificados como ´sistemas generales` (tipo 4): "  count patches with [zonificacion = 4])
+
+  ask patches with [(zonificacion = 1) and (area_estudio > 0)][set pcolor blue] ;urbano (azul)
+  ask patches with [(zonificacion = 2) and (area_estudio > 0)][set pcolor green] ;urbanizable (verde)
+  ask patches with [(zonificacion = 4) and (area_estudio > 0)][set pcolor orange] ;sistemas generales (naranja)
+
+ end
+
+;------------------------------------------------------------------------------------------------------------------
+
+;################################################  URBANIZABLES  ##################################################
+
+to mostrar_zonas_urbanizables
+
+  ask patches [set pcolor 8]
+  ask patches with [(area_estudio > 0) and (zonificacion = 2) and (tipo_viviendas = 1)][set pcolor green]
+
+end
+
+;------------------------------------------------------------------------------------------------------------------
+
+;########################################  ZONAS DE ESTANDAR  #####################################################
+;; muestra la clasificacion de cada pixel en funcion de la categoria de precio de vivienda que tiene
+
+to mostrar_estandar_zona
+
+  ask patches [set pcolor 8]
+  show (word "Zonas con viviendas baratas (1):"  count patches with [precio_viviendas = 1])
+  show (word "Zonas con viviendas medias  (2):"  count patches with [precio_viviendas = 2])
+  show (word "Zonas con viviendas caras   (3):"  count patches with [precio_viviendas = 3])
+
+  ask patches with [precio_viviendas = 1][set pcolor green]
+  ask patches with [precio_viviendas = 2][set pcolor yellow]
+  ask patches with [precio_viviendas = 3][set pcolor orange]
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
+;################################  NÚMERO DE EDIFICACIONES CARGA INICIAL  ##########################################
+
+to mostrar_zonas_edificadas
+  ask patches [set pcolor 8]
+  ask patches with [tipo_viviendas > 1] [
+    set pcolor red]
+  show (word "Número de pixeles edificados: "count patches with [tipo_viviendas > 0])
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
+;###################################  NÚMERO DE EDIFICACIONES SIMULADAS  ###########################################
+
+to mostrar_zonas_simuladas
+
+  let edificacion patches with [modificado = TRUE]
+  ask edificacion [set pcolor blue]
+
+  show (count edificacion with [precio_viviendas = 1])
+  show (count edificacion with [precio_viviendas = 2])
+  show (count edificacion with [precio_viviendas = 3])
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
+;################################  DISTANCIA A ÁREAS URBANAS CONSOLIDADAS  #########################################
+
+to mostrar_distancia_zonas_urbanas_consolidadas
+
+  ask patches [set pcolor 8]
+  ask patches with [area_estudio > 0] [set pcolor scale-color sky dist_urbano 7000 10000]
+  show (word "Distancia a zona urbanas entre "  min [dist_urbano] of patches " y "  max [dist_urbano] of patches)
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
+;#########################################  DISTANCIA A CARRETERAS  ################################################
+
+to mostrar_distancia_carreteras
+
+  ask patches [set pcolor 8]
+  ask patches with [area_estudio > 0] [set pcolor scale-color orange dist_carreteras 7000 10000]
+  show (word "distancia a carretera entre "  min [dist_carreteras] of patches " y "  max [dist_carreteras] of patches)
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
+;#######################################  DISTANCIA A PARADAS DE TREN  #############################################
+
+to mostrar_distancia_transporte_publico
+
+  ask patches [set pcolor 8]
+  ask patches with [(area_estudio > 0) and (dist_estaciones = 5000)][set pcolor 117]
+  ask patches with [(area_estudio > 0) and (dist_estaciones = 10000)][set pcolor 115]
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
+;#######################################  DISTANCIA A ZONAS DE TRABAJO   ###########################################
+
+to mostrar_distancia_zonas_trabajo
+
+  ask patches [set pcolor 8]
+  ask patches with [area_estudio > 0] [set pcolor scale-color brown dist_zonas_trabajo 7000 10000]
+  show (word "distancia a zonas de trbajo "  min [dist_zonas_trabajo] of patches " y "  max [dist_zonas_trabajo] of patches)
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
+;#######################################  DISTANCIA A ZONAS VERDES  ################################################
+
+to mostrar_distancia_zonas_verdes
+
+  ask patches [set pcolor 8]
+  ask patches with [area_estudio > 0]  [set pcolor scale-color green dist_zonas_verdes 7000 10000]
+  show (word "distancia a zonas de trbajo "  min [dist_zonas_verdes] of patches " y "  max [dist_zonas_verdes] of patches)
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
+;########################################  ZONAS DE ESTANDAR  #####################################################
+;; muestra la clasificacion de cada pixel en funcion de la categoria de precio de vivienda que tiene
+
+to mostrar_tipo_viviendas
+
+  ask patches [set pcolor 8]
+
+  ask patches with [tipo_viviendas = 0] [set pcolor white] ;; fuera de la zona de estudio
+  ask patches with [tipo_viviendas = 1] [set pcolor green] ;; vacante
+  ask patches with [tipo_viviendas = 2] [set pcolor blue] ;; multifamiliar
+  ask patches with [tipo_viviendas = 3] [set pcolor orange] ;;unifamiliar
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
+;########################################  PRECIO DE LAS VIVIENDAS  ################################################
+
+to mostrar_viviendas_por_precios
+
+  ask patches with [(precio_viviendas = 1) and (tipo_viviendas > 1)] [set pcolor green]
+  show (word "Edificaciones baratas " count patches with [(precio_viviendas = 1) and (tipo_viviendas > 1)])
+
+  ask patches with [(precio_viviendas = 2) and (tipo_viviendas > 1)] [set pcolor yellow]
+  show (word "Edificaciones medias " count patches with [(precio_viviendas = 2) and (tipo_viviendas > 1)])
+
+  ask patches with [(precio_viviendas = 3) and (tipo_viviendas > 1)] [set pcolor orange]
+  show (word "Edificaciones caras " count patches with [(precio_viviendas = 3) and (tipo_viviendas > 1)])
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------
+
+;###################################################################################################################
+;###########################  FUNCIONES RELATIVAS A LAS REGLAS DE DECISION  ########################################
+;###################################################################################################################
+
+;-------------------------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------
+
+
+;###################################  TERRENO DISPONIBLE PARA CONSTUIR  ############################################
+
+to terreno_disponible
+
+  ask patches [set pcolor 8]
+
+  ask patches with [(disponible = 1) and (precio_viviendas = 1)] [set pcolor green]
+  ask patches with [(disponible = 1) and (precio_viviendas = 2)] [set pcolor yellow]
+  ask patches with [(disponible = 1) and (precio_viviendas = 3)] [set pcolor orange]
+
+  show (word "Zonas disponibles para construir " count patches with [(disponible = 1)]
+  ", barata(1): " count patches with [(disponible = 1) and (precio_viviendas = 1)]
+  ", media(2): " count patches with [(disponible = 1) and (precio_viviendas = 2)]
+  ", cara(3): " count patches with [(disponible = 1) and (precio_viviendas = 3)])
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
+;#######################  CALCULAR LAS DEMANDAS DE CADA TIPO DE VIVIENDA A CONSTRUIR  ##############################
+
+to calcular_demandas
+
+  show (word "Demanda total de viviendas: " (demanda_multifamiliar + demanda_unifamiliar))
+
+  set demanda_multifamiliar_alto   (demanda_multifamiliar * (Proporcion_multifamiliar_alto  / 100))
+  set demanda_multifamiliar_medio  (demanda_multifamiliar * (Proporcion_multifamiliar_medio / 100))
+  set demanda_multifamiliar_bajo   (demanda_multifamiliar * (Proporcion_multifamiliar_bajo  / 100))
+
+  show (word "Demanda de viviendas multifamiliares de estandar alto: " demanda_multifamiliar_alto)
+  show (word "Demanda de viviendas multifamiliares de estandar medio: " demanda_multifamiliar_medio)
+  show (word "Demanda de viviendas multifamiliares de estandar bajo: " demanda_multifamiliar_bajo)
+
+  set demanda_unifamiliar_alto   (demanda_unifamiliar * (Proporcion_unifamiliar_alto  / 100))
+  set demanda_unifamiliar_medio  (demanda_unifamiliar * (Proporcion_unifamiliar_medio / 100))
+
+  show (word "Demanda de viviendas unifamiliares de estandar alto: " demanda_unifamiliar_alto)
+  show (word "Demanda de viviendas unifamiliares de estandar medio: " demanda_unifamiliar_medio)
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
+;##############################  PONDERACIONES DE CADA TIPO DE EDIFICACION  ########################################
+
+to establecer_ponderaciones
+
+  let total_importancias (Distancia_a_urbano_consolidado + Distancia_a_carreteras + Distancia_a_transporte_público +
+                          Distancia_a_zonas_de_trabajo + Distancia_a_zonas_verdes)
+
+  let importancia_u_c (Distancia_a_urbano_consolidado / total_importancias)
+  let importancia_ca  (Distancia_a_carreteras / total_importancias)
+  let importancia_tp  (Distancia_a_transporte_público / total_importancias)
+  let importancia_zt  (Distancia_a_zonas_de_trabajo / total_importancias)
+  let importancia_zv  (Distancia_a_zonas_verdes / total_importancias)
+
+  let ajuste_p1 (1.1 - Diferenciación)
+  let ajuste_p2 (1.1 + Diferenciación)
+
+  ;·················································································································
+
+  let tot1 ((2 ^ ajuste_p1) + (2.5 ^ ajuste_p1) + (0.5 ^ ajuste_p1) + (2 ^ ajuste_p1) + (3 ^ ajuste_p1))
+  set preferencia_urb_conso_alto_multi_p1  (importancia_u_c * ((2 ^ ajuste_p1) / tot1))
+  set preferencia_carretera_alto_multi_p1  (importancia_ca  * ((2.5 ^ ajuste_p1) / tot1))
+  set preferencia_trans_pub_alto_multi_p1  (importancia_tp  * ((0.5 ^ ajuste_p1) / tot1))
+  set preferencia_zonas_tr_alto_multi_p1   (importancia_zt  * ((2 ^ ajuste_p1) / tot1))
+  set preferencia_zonas_ver_alto_multi_p1  (importancia_zv  * ((3 ^ ajuste_p1) / tot1))
+
+  let tot2 ((2 ^ ajuste_p1) + (3 ^ ajuste_p1) + (1 ^ ajuste_p1) + (2.5 ^ ajuste_p1) + (1.5 ^ ajuste_p1))
+  set preferencia_urb_conso_medio_multi_p1 (importancia_u_c * ((2 ^ ajuste_p1) / tot2))
+  set preferencia_carretera_medio_multi_p1 (importancia_ca  * ((3 ^ ajuste_p1) / tot2))
+  set preferencia_trans_pub_medio_multi_p1 (importancia_tp  * ((1 ^ ajuste_p1) / tot2))
+  set preferencia_zonas_tr_medio_multi_p1  (importancia_zt  * ((2.5 ^ ajuste_p1) / tot2))
+  set preferencia_zonas_ver_medio_multi_p1 (importancia_zv  * ((1.5 ^ ajuste_p1) / tot2))
+
+  let tot3 ((3.5 ^ ajuste_p1) + (0.5 ^ ajuste_p1) + (3.5 ^ ajuste_p1) + (2 ^ ajuste_p1) + (0.5 ^ ajuste_p1))
+  set preferencia_urb_conso_bajo_multi_p1  (importancia_u_c * ((3.5 ^ ajuste_p1) / tot3))
+  set preferencia_carretera_bajo_multi_p1  (importancia_ca  * ((0.5 ^ ajuste_p1) / tot3))
+  set preferencia_trans_pub_bajo_multi_p1  (importancia_tp  * ((3.5 ^ ajuste_p1) / tot3))
+  set preferencia_zonas_tr_bajo_multi_p1   (importancia_zt  * ((2 ^ ajuste_p1) / tot3))
+  set preferencia_zonas_ver_bajo_multi_p1  (importancia_zv  * ((0.5 ^ ajuste_p1) / tot3))
+
+  let tot4 ((1 ^ ajuste_p1) + (3.5 ^ ajuste_p1) + (0 ^ ajuste_p1) + (2 ^ ajuste_p1) + (3.5 ^ ajuste_p1))
+  set preferencia_urb_conso_alto_uni_p1    (importancia_u_c * ((1 ^ ajuste_p1) / tot4))
+  set preferencia_carretera_alto_uni_p1    (importancia_ca  * ((3.5 ^ ajuste_p1) / tot4))
+  set preferencia_trans_pub_alto_uni_p1    (importancia_tp  * ((0 ^ ajuste_p1) / tot4))
+  set preferencia_zonas_tr_alto_uni_p1     (importancia_zt  * ((2 ^ ajuste_p1) / tot4))
+  set preferencia_zonas_ver_alto_uni_p1    (importancia_zv  * ((3.5 ^ ajuste_p1) / tot4))
+
+  let tot5 ((2.5 ^ ajuste_p1) + (2.5 ^ ajuste_p1) + (1 ^ ajuste_p1) + (2.5 ^ ajuste_p1) + (1.5 ^ ajuste_p1))
+  set preferencia_urb_conso_medio_uni_p1   (importancia_u_c * ((2.5 ^ ajuste_p1) / tot5))
+  set preferencia_carretera_medio_uni_p1   (importancia_ca  * ((2.5 ^ ajuste_p1) / tot5))
+  set preferencia_trans_pub_medio_uni_p1   (importancia_tp  * ((1 ^ ajuste_p1) / tot5))
+  set preferencia_zonas_tr_medio_uni_p1    (importancia_zt  * ((2.5 ^ ajuste_p1) / tot5))
+  set preferencia_zonas_ver_medio_uni_p1   (importancia_zv  * ((1.5 ^ ajuste_p1) / tot5))
+
+  ;·················································································································
+
+  let tot6 ((2 ^ ajuste_p2) + (4 ^ ajuste_p2) + (0.5 ^ ajuste_p2) + (2 ^ ajuste_p2) + (3 ^ ajuste_p2))
+  set preferencia_urb_conso_alto_multi_p2  (importancia_u_c * ((1 ^ ajuste_p2) / tot6))
+  set preferencia_carretera_alto_multi_p2  (importancia_ca  * ((4 ^ ajuste_p2) / tot6))
+  set preferencia_trans_pub_alto_multi_p2  (importancia_tp  * ((0.5 ^ ajuste_p2) / tot6))
+  set preferencia_zonas_tr_alto_multi_p2   (importancia_zt  * ((2 ^ ajuste_p2) / tot6))
+  set preferencia_zonas_ver_alto_multi_p2  (importancia_zv  * ((3 ^ ajuste_p2) / tot6))
+
+  let tot7 ((2 ^ ajuste_p2) + (3 ^ ajuste_p2) + (1 ^ ajuste_p2) + (2.5 ^ ajuste_p2) + (1.5 ^ ajuste_p2))
+  set preferencia_urb_conso_medio_multi_p2 (importancia_u_c * ((2 ^ ajuste_p2) / tot7))
+  set preferencia_carretera_medio_multi_p2 (importancia_ca  * ((3 ^ ajuste_p2) / tot7))
+  set preferencia_trans_pub_medio_multi_p2 (importancia_tp  * ((1 ^ ajuste_p2) / tot7))
+  set preferencia_zonas_tr_medio_multi_p2  (importancia_zt  * ((2.5 ^ ajuste_p2) / tot7))
+  set preferencia_zonas_ver_medio_multi_p2 (importancia_zv  * ((1.5 ^ ajuste_p2) / tot7))
+
+  let tot8 ((3.5 ^ ajuste_p2) + (0.5 ^ ajuste_p2) + (3.5 ^ ajuste_p2) + (2 ^ ajuste_p2) + (0.5 ^ ajuste_p2))
+  set preferencia_urb_conso_bajo_multi_p2  (importancia_u_c * ((3.5 ^ ajuste_p2) / tot8))
+  set preferencia_carretera_bajo_multi_p2  (importancia_ca  * ((0.5 ^ ajuste_p2) / tot8))
+  set preferencia_trans_pub_bajo_multi_p2  (importancia_tp  * ((3.5 ^ ajuste_p2) / tot8))
+  set preferencia_zonas_tr_bajo_multi_p2   (importancia_zt  * ((2 ^ ajuste_p2) / tot8))
+  set preferencia_zonas_ver_bajo_multi_p2  (importancia_zv  * ((0.5 ^ ajuste_p2) / tot8))
+
+  let tot9 ((1 ^ ajuste_p2) + (3.5 ^ ajuste_p2) + (0 ^ ajuste_p2) + (2 ^ ajuste_p2) + (3.5 ^ ajuste_p2))
+  set preferencia_urb_conso_alto_uni_p2    (importancia_u_c * ((1 ^ ajuste_p2) / tot9))
+  set preferencia_carretera_alto_uni_p2    (importancia_ca  * ((3.5 ^ ajuste_p2) / tot9))
+  set preferencia_trans_pub_alto_uni_p2    (importancia_tp  * ((0 ^ ajuste_p2) / tot9))
+  set preferencia_zonas_tr_alto_uni_p2     (importancia_zt  * ((2 ^ ajuste_p2) / tot9))
+  set preferencia_zonas_ver_alto_uni_p2    (importancia_zv  * ((3.5 ^ ajuste_p2) / tot9))
+
+  let tot10 ((2.5 ^ ajuste_p2) + (2.5 ^ ajuste_p2) + (1 ^ ajuste_p2) + (2.5 ^ ajuste_p2) + (1.5 ^ ajuste_p2))
+  set preferencia_urb_conso_medio_uni_p2   (importancia_u_c * ((2.5 ^ ajuste_p2) / tot10))
+  set preferencia_carretera_medio_uni_p2   (importancia_ca  * ((2.5 ^ ajuste_p2) / tot10))
+  set preferencia_trans_pub_medio_uni_p2   (importancia_tp  * ((1 ^ ajuste_p2) / tot10))
+  set preferencia_zonas_tr_medio_uni_p2    (importancia_zt  * ((2.5 ^ ajuste_p2) / tot10))
+  set preferencia_zonas_ver_medio_uni_p2   (importancia_zv  * ((1.5 ^ ajuste_p2) / tot10))
+
+end
+
+
+;-------------------------------------------------------------------------------------------------------------------
+
+;###################################  ESTABLECIMINETO DE LAS APTITUDES  ############################################
+
+to establecer_aptitudes
+
+  establecer_ponderaciones
+
+  ask patches with [disponible = 1] [
+
+    set aptitud_multi_alto_p1   ((preferencia_urb_conso_alto_multi_p1 * dist_urbano) + (preferencia_carretera_alto_multi_p1 * dist_carreteras) +
+                                (preferencia_trans_pub_alto_multi_p1 * dist_estaciones) + (preferencia_zonas_tr_alto_multi_p1 * dist_zonas_trabajo) +
+                                (preferencia_zonas_ver_alto_multi_p1 * dist_zonas_verdes))
+
+    set aptitud_multi_medio_p1  ((preferencia_urb_conso_medio_multi_p1 * dist_urbano) + (preferencia_carretera_medio_multi_p1 * dist_carreteras) +
+                                (preferencia_trans_pub_medio_multi_p1 * dist_estaciones) + (preferencia_zonas_tr_medio_multi_p1 * dist_zonas_trabajo) +
+                                (preferencia_zonas_ver_medio_multi_p1 * dist_zonas_verdes))
+
+    set aptitud_multi_bajo_p1   ((preferencia_urb_conso_bajo_multi_p1 * dist_urbano) + (preferencia_carretera_bajo_multi_p1 * dist_carreteras) +
+                                (preferencia_trans_pub_bajo_multi_p1 * dist_estaciones) + (preferencia_zonas_tr_bajo_multi_p1 * dist_zonas_trabajo) +
+                                (preferencia_zonas_ver_bajo_multi_p1 * dist_zonas_verdes))
+
+    set aptitud_uni_alto_p1     ((preferencia_urb_conso_alto_uni_p1 * dist_urbano) + (preferencia_carretera_alto_uni_p1 * dist_carreteras) +
+                                (preferencia_trans_pub_alto_uni_p1 * dist_estaciones) + (preferencia_zonas_tr_alto_uni_p1 * dist_zonas_trabajo) +
+                                (preferencia_zonas_ver_alto_uni_p1 * dist_zonas_verdes))
+
+    set aptitud_uni_medio_p1    ((preferencia_urb_conso_medio_uni_p1 * dist_urbano) + (preferencia_carretera_medio_uni_p1 * dist_carreteras) +
+                                (preferencia_trans_pub_medio_uni_p1 * dist_estaciones) + (preferencia_zonas_tr_medio_uni_p1 *  dist_zonas_trabajo) +
+                                (preferencia_zonas_ver_medio_uni_p1 * dist_zonas_verdes))
+    ;·····················································································································································
+
+    set aptitud_multi_alto_p2   ((preferencia_urb_conso_alto_multi_p2 * dist_urbano) + (preferencia_carretera_alto_multi_p2 * dist_carreteras) +
+                                (preferencia_trans_pub_alto_multi_p2 * dist_estaciones) +  (preferencia_zonas_tr_alto_multi_p2 * dist_zonas_trabajo) +
+                                (preferencia_zonas_ver_alto_multi_p2 * dist_zonas_verdes))
+
+    set aptitud_multi_medio_p2  ((preferencia_urb_conso_medio_multi_p2 * dist_urbano) + (preferencia_carretera_medio_multi_p2 * dist_carreteras) +
+                                (preferencia_trans_pub_medio_multi_p2 * dist_estaciones) + (preferencia_zonas_tr_medio_multi_p2 * dist_zonas_trabajo) +
+                                (preferencia_zonas_ver_medio_multi_p2 * dist_zonas_verdes))
+
+    set aptitud_multi_bajo_p2   ((preferencia_urb_conso_bajo_multi_p2 * dist_urbano) + (preferencia_carretera_bajo_multi_p2 * dist_carreteras) +
+                                (preferencia_trans_pub_bajo_multi_p2 * dist_estaciones) + (preferencia_zonas_tr_bajo_multi_p2 * dist_zonas_trabajo) +
+                                (preferencia_zonas_ver_bajo_multi_p2 * dist_zonas_verdes))
+
+    set aptitud_uni_alto_p2     ((preferencia_urb_conso_alto_uni_p2 * dist_urbano) + (preferencia_carretera_alto_uni_p2 * dist_carreteras) +
+                                (preferencia_trans_pub_alto_uni_p2 * dist_estaciones) + (preferencia_zonas_tr_alto_uni_p2 * dist_zonas_trabajo) +
+                                (preferencia_zonas_ver_alto_uni_p2 * dist_zonas_verdes))
+
+    set aptitud_uni_medio_p2    ((preferencia_urb_conso_medio_uni_p2 * dist_urbano) + (preferencia_carretera_medio_uni_p2 * dist_carreteras) +
+                                (preferencia_trans_pub_medio_uni_p2 * dist_estaciones) + (preferencia_zonas_tr_medio_uni_p2 * dist_zonas_trabajo) +
+                                (preferencia_zonas_ver_medio_uni_p2 * dist_zonas_verdes))
+
+  ]
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
+;######################################  CREACION DE LOS PROMOTORES  ###############################################
 
 to crear_promotoras
 
+  calcular_demandas
+
   ask promotoras1 [die]
+  create-promotoras1 Número_promotoras_tipo_1
+
+  ask promotoras1 [
+    set radio_busqueda (10 + (Diferenciación * 30))
+    set shape "circle"
+    set color violet
+    set size radio_busqueda
+    move-to one-of patches with [disponible = 1]
+    set area_influencia area_influecia_de_cada_promotora self radio_busqueda
+  ]
+
   ask promotoras2 [die]
+  create-promotoras2 Número_promotoras_tipo_2
 
-  create-promotoras1 num_promotoras1 [setxy random-xcor random-ycor set color blue]
-  create-promotoras2 num_promotoras2 [setxy random-xcor random-ycor set color red]
-
-  ask promotoras1[
-
-    set tipo tipo1
-    set riesgo  riesgo1
-    set capacidad_inversion capacidad_inversion1
-    set ponderacion ponderacion1
+  ask promotoras2 [
+    set radio_busqueda (10 + (precision (Diferenciación * 10) 0))
+    set shape "circle"
+    set color red
+    set size radio_busqueda
+    move-to one-of patches with [disponible = 1]
+    set area_influencia area_influecia_de_cada_promotora self radio_busqueda
   ]
 
-    ask promotoras1[
-
-    set tipo tipo2
-    set riesgo  riesgo2
-    set capacidad_inversion capacidad_inversion2
-    set ponderacion ponderacion2
-  ]
-
-end
-
-
-;########################################################## CONSTRUIR ##########################################################
-
-
-to construir
-
-  set terrdisp patches with [(area_estudio > 0) and (d1_clasfc = 2) and (nviv = 0)]
-
-  ask promotoras1 [move-to one-of (patches with [(area_estudio > 0) and (d1_clasfc = 2) and (nviv = 0)])]
-  ask promotoras2 [move-to one-of (patches with [(area_estudio > 0) and (d1_clasfc = 2) and (nviv = 0)])]
-
+  seleccion_mejor_pixel
 
 
 end
 
+; ask promotora1 349 [ask area_influencia [set pcolor white]]
+; ask promotora1 139 [ask area_influencia with [dist_carreteras = 9953] [set modificado 0]]
 
 
-;##########################################################  DISPLAY MUNICIPIOS ##########################################################
+to seleccion_mejor_pixel
 
-;muestra los municipios y sus nombres si queremos:
+  ask promotoras1 [
 
-to display-municipios
-  ask municipios-labels [ die ]
-  gis:draw municipios-dataset 1
-  foreach gis:feature-list-of municipios-dataset [ ?1 -> gis:set-drawing-color red
-       if label-municipios
-       [ let centroid gis:location-of gis:centroid-of ?1
-         if not empty? centroid
-         [ create-municipios-labels 1
-           [ set xcor item 0 centroid
-             set ycor item 1 centroid
-             set size 1
-             set label-color grey
-             set label gis:property-value ?1 "nombres"
-           ]]] ]
-end
+    let mejor_aptitud_mu_a (max [aptitud_multi_alto_p1] of area_influencia)
+    let mejor_aptitud_mu_m (max [aptitud_multi_medio_p1] of area_influencia)
+    let mejor_aptitud_mu_b (max [aptitud_multi_bajo_p1] of area_influencia)
+    let mejor_aptitud_un_a (max [aptitud_uni_alto_p1] of area_influencia)
+    let mejor_aptitud_un_m (max [aptitud_uni_medio_p1] of area_influencia)
 
+    set mejor_aptitud max (list mejor_aptitud_mu_a mejor_aptitud_mu_m mejor_aptitud_mu_b mejor_aptitud_un_a mejor_aptitud_un_m)
 
-
-;##########################################################  USO DEL SUELO ##########################################################
-
-to usosuelo
-  ask patches [set pcolor 9]
-  ;show (word "patches fuera del área de estudio (clasif = 0): "  count patches with [d1_clasfc = 0] )
-  show (word "patches clasificados como ´urbano` (clasif = 1): "  count patches with [d1_clasfc = 1] )
-  show (word "patches clasificados como ´urbanizable` (clasif = 2): "  count patches with [d1_clasfc = 2] )
-  show (word "patches clasificados como ´no urbanizable` (clasif = 3): "  count patches with [d1_clasfc = 3] )
-  show (word "patches clasificados como ´sistemas generales` (clasif = 4): "  count patches with [d1_clasfc = 4] )
-  ;show (word "patches clasificados como ´sin dato` (clasif = 5): "  count patches with [d1_clasfc = 5] )
-  ;ask patches with [d1_clasfc = 0][set pcolor red] ;fuera del área de estudio (naranja)
-  ask patches with [d1_clasfc = 1][set pcolor orange] ;urbano (naranja)
-  ask patches with [d1_clasfc = 2][set pcolor 3] ;urbanizable (gris oscuro)
-  ask patches with [d1_clasfc = 3][set pcolor 7] ;no urbanizable (gris claro)
-  ask patches with [d1_clasfc = 4][set pcolor green] ;sistemas generales (verde)
-  ;ask patches with [d1_clasfc = 5][set pcolor yellow]
- end
-
-
-;######################################################### PRECIO VIVIENDA ##########################################################
-
-to precioviv
-  ask patches [set pcolor 9]
-  show (word "patches con vivienda barata (1):"  count patches with [g7_ponval3 = 1] )
-  show (word "patches con vivienda media  (2):"  count patches with [g7_ponval3 = 2] )
-  show (word "patches con vivienda cara   (3):"  count patches with [g7_ponval3 = 3] )
-  ask patches with [g7_ponval3 = 0][set pcolor white]
-  ask patches with [g7_ponval3 = 1][set pcolor yellow]
-  ask patches with [g7_ponval3 = 2][set pcolor orange]
-  ask patches with [g7_ponval3 = 3][set pcolor green]
-  ask patches with [g7_ponval3 = 9][set pcolor grey]
-end
-
-
-;########################################################## DENSIDAD DE VIVIENDA ##########################################################
-
-to densviv
-  ask patches [set pcolor 9]
-  let mini min [f4_dsdvv] of patches with [f4_dsdvv >= 0]
-  let maxi max [f4_dsdvv] of patches with [f4_dsdvv >= 0]
-  ask patches with [f4_dsdvv >= 0]
-    [set pcolor scale-color sky f4_dsdvv 5000 100 ]
-  show (word "densidad entre "  mini " y "  maxi)
-end
-
-
-;########################################################## NUMERO DE VIVIENDAS CARGA INICIAL ##########################################################
-
-to numvivini
-  let mini min [g3_nviv] of patches with [g3_nviv >= 0]
-  let maxi max [g3_nviv] of patches with [g3_nviv >= 0]
-  let vacias max [g3_nviv] of patches with [g3_nviv = 0]
-  ask patches with [g3_nviv > 0][set pcolor scale-color sky g3_nviv 100 1 ] ;como hago para que no empiece en blanco?
-  show (word "número de viviendas entre "  mini " y "  maxi " siendo edificios sin viviendas " vacias )
-  show (word "media de viviendas baratas por edificación " mean [g3_nviv] of patches with [(g7_ponval3 = 1) and (g3_nviv > 0)])
-  show (word "media de viviendas medias por edificación " mean [g3_nviv] of patches with [(g7_ponval3 = 2) and (g3_nviv > 0)])
-  show (word "media de viviendas caras por edificación " mean [g3_nviv] of patches with [(g7_ponval3 = 3) and (g3_nviv > 0)])
-  end
-
-
-;##########################################################  NÚMERO DE EDIFICACIONES CARGA INICIAL ##########################################################
-
-to numedifini
-  ask patches with [g3_nviv > 0] [
-    set pcolor pink]
-  show (word "número de pixeles edificados: "count patches with [g3_nviv > 0])
-end
-
-
-;##########################################################  ÁREA URBANA CONSOLIDADA ##########################################################
-
-to urbanoconsolidado
-  ask patches [set pcolor white]
-  ask patches[set pcolor scale-color sky dist_urb1 5000 0]
-  show (word "distancia a zona urbanas entre "  min [dist_urb1] of patches " y "  max [dist_urb1] of patches)
-end
-
-;##########################################################  DIST CARRETERAS ##########################################################
-
-to distcarreteras
-  ask patches[set pcolor scale-color orange ctra1 3000 0]
-  show (word "distancia a carretera entre "  min [ctra1] of patches " y "  max [ctra1] of patches)
-end
-
-
-;##########################################################  DIST TRANSPORTE PUBLICO ##########################################################
-
-to disttransportepublico
-  ask patches [set pcolor 9]
-  ask patches with [f2_esttp = 500][set pcolor 115]
-  ask patches with [f2_esttp = 1000][set pcolor 117]
-end
-
-
-
-;########################################################## MUESTRA POR TIPO ##########################################################
-to muestraportipo
-
-  ask patches with [(g7_ponval3 = 1) and (nviv > 0)] [ set pcolor yellow]
-  show (word "pixeles baratos " count patches with [(g7_ponval3 = 1) and (nviv > 0)])
-
-  ask patches with [(g7_ponval3 = 2) and (nviv > 0)] [ set pcolor orange]
-  show (word "pixeles medios " count patches with [(g7_ponval3 = 2) and (nviv > 0)])
-
-  ask patches with [(g7_ponval3 = 3) and (nviv > 0)] [ set pcolor green]
-  show (word "pixeles caros " count patches with [(g7_ponval3 = 3) and (nviv > 0)])
-
-end
-
-
-;########################################################## TERRENO DISPONIBLE PARA CONSTUIR ##########################################################
-
-to terrenodisponible
-
-  let viv-cara 0
-  let viv-media 0
-  let viv-barata 0
-
-  ask patches [ set pcolor 9]
-
-  set terrdisp patches with [(area_estudio > 0) and (d1_clasfc = 2) and (nviv = 0)]
-
-  ask terrdisp [
-    set pcolor pink]
-
-  ask terrdisp with [g7_ponval3 = 1][set pcolor 43]
-  ask terrdisp with [g7_ponval3 = 2][set pcolor 23]
-  ask terrdisp with [g7_ponval3 = 3][set pcolor 63]
-
-  show (word "Patches disponibles para construir "count terrdisp
-  ", barata(1): " count terrdisp with [g7_ponval3 = 1]
-  ", media(2): " count terrdisp with [g7_ponval3 = 2]
-  ", cara(3): " count terrdisp with [g7_ponval3 = 3] )
-
-end
-
-;#########################################################################################################
-;##################                                                                  #####################
-;################## FUNCION PRINCIPAL QUE EJECUTA EL CONJUNTO DE PROCESOS DEL MODELO #####################
-;##################                                                                  #####################
-;#########################################################################################################
-
-to main
-
-  let FIN false
-  while [not FIN] [   ; mientras no cambia cumple criterios de finalizado, el modelo se sigue ejecutando
-
-    crear_promotoras
-    construir
+    ;if mejor_aptitud = mejor_aptitud_un_a construir self area_influencia [ask promotora1 who [ask area_influencia with [aptitud_multi_alto_p1 = mejor_aptitud] [set modificado 1]]]
+    if mejor_aptitud = mejor_aptitud_un_a [construir area_influencia mejor_aptitud "aptitud_multi_alto_p1"]
 
   ]
 
-user-message (word "¡Finalizado!")
-tick
+    ask promotoras2 [
+    set mejor_aptitud max (list (max [aptitud_multi_alto_p2] of area_influencia) (max [aptitud_multi_medio_p2] of area_influencia) (max [aptitud_multi_bajo_p2] of area_influencia) (max [aptitud_uni_alto_p2] of area_influencia) (max [aptitud_uni_medio_p2] of area_influencia))
+  ]
+
+end
+;-------------------------------------------------------------------------------------------------------------------
+
+;#########################  ESTABLECIMIENTO DEL AREA DE ENFLUENCIA DE CADA PROMOTORA  ##############################
+
+to construir [area aptitud tipo]
+
+  if tipo = "aptitud_multi_alto_p1" [ask area_influencia with [aptitud_multi_alto_p1 = mejor_aptitud] [set modificado 1]]
+
+end
+
+
+
+
+to-report area_influecia_de_cada_promotora [promotora distancia]
+
+  let disponibilidad patches with [disponible = 1]
+  let aqui promotora
+  let area disponibilidad with [distance aqui < distancia]
+
+  report area
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------
+
+;###################################################################################################################
+;#######################                                                                    ########################
+;#######################  FUNCION PRINCIPAL QUE EJECUTA EL CONJUNTO DE PROCESOS DEL MODELO  ########################
+;#######################                                                                    ########################
+;###################################################################################################################
+
+;-------------------------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------
+
+
+to modelo2
+
+
+
+  while [ticks < Número_de_iteraciones] [
+
+    ;construye_vivienda
+
+    tick
+  ]
+
+  user-message (word "¡Finalizado!")
+  stop
 
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-221
-27
-1021
-836
+10
+10
+1323
+1403
 -1
 -1
-0.808
+1.0
 1
 10
 1
@@ -335,22 +730,22 @@ GRAPHICS-WINDOW
 0
 1
 0
-799
+1304
 0
-799
+1383
 0
 0
 1
 ticks
-55.0
+30.0
 
 BUTTON
-24
-26
-87
-59
-setup
-setup
+1334
+11
+1504
+125
+INICIO
+inicio\n\n
 NIL
 1
 T
@@ -362,40 +757,12 @@ NIL
 1
 
 BUTTON
-24
-83
-153
-116
-display-municipios
-ask patches with [area_estudio > 0][\n  set pcolor 49]\n\n\n;let ij 0\n\n;while [ij < 19][\n;let selec patches with [area_estudio = ij]\n;ask selec [set pcolor 49]\n;set ij ij + 1\n\n;show ij\n\n;]
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-SWITCH
-23
-146
-164
-179
-label-municipios
-label-municipios
-1
-1
--1000
-
-BUTTON
-24
-219
-104
-252
-usosuelo
-usosuelo
+1334
+150
+1504
+183
+Mostrar el área de estudio
+mostrar_area_estudio
 NIL
 1
 T
@@ -407,12 +774,12 @@ NIL
 1
 
 BUTTON
-21
-288
-102
-321
-precioviv
-precioviv
+1333
+506
+1503
+539
+Mostrar la zonificación legal
+mostrar_zonificacion
 NIL
 1
 T
@@ -424,12 +791,12 @@ NIL
 1
 
 BUTTON
-22
-371
-109
-404
-numedifini
-numedifini
+1334
+614
+1504
+660
+Mostrar zonificación por precios
+mostrar_estandar_zona
 NIL
 1
 T
@@ -441,12 +808,12 @@ NIL
 1
 
 BUTTON
-22
-437
-104
-470
-numvivini
-numvivini
+1335
+700
+1505
+736
+Mostrar edificación inicial
+mostrar_zonas_edificadas
 NIL
 1
 T
@@ -458,12 +825,12 @@ NIL
 1
 
 BUTTON
-22
-505
-96
-538
-densviv
-densviv
+1335
+980
+1505
+1013
+Urbano consolidado
+mostrar_distancia_zonas_urbanas_consolidadas
 NIL
 1
 T
@@ -475,12 +842,12 @@ NIL
 1
 
 BUTTON
-25
-573
-160
-606
-urbanoconsolidado
-urbanoconsolidado
+1335
+1013
+1505
+1046
+Carreteras
+mostrar_distancia_carreteras
 NIL
 1
 T
@@ -492,12 +859,12 @@ NIL
 1
 
 BUTTON
-24
-644
-133
-677
-distcarreteras
-distcarreteras
+1335
+1046
+1505
+1079
+Transporte público
+mostrar_distancia_transporte_publico
 NIL
 1
 T
@@ -509,12 +876,50 @@ NIL
 1
 
 BUTTON
-22
-725
-170
-758
-disttransportepublico
-disttransportepublico
+1335
+773
+1505
+810
+Mostrar terreno disponible
+terreno_disponible\n
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+INPUTBOX
+1708
+284
+1843
+350
+Demanda_unifamiliar
+200.0
+1
+0
+Number
+
+TEXTBOX
+1338
+950
+1503
+982
+MOSTRAR DISTANCIAS A:
+13
+0.0
+1
+
+BUTTON
+1335
+1079
+1505
+1112
+Zonas de trabajo
+mostrar_distancia_zonas_trabajo
 NIL
 1
 T
@@ -526,12 +931,12 @@ NIL
 1
 
 BUTTON
-21
-808
-148
-841
-terrenodisponible
-terrenodisponible\n
+1335
+1112
+1505
+1145
+Zonas verdes
+mostrar_distancia_zonas_verdes
 NIL
 1
 T
@@ -541,34 +946,14 @@ NIL
 NIL
 NIL
 1
-
-CHOOSER
-1053
-85
-1191
-130
-num_promotora_1
-num_promotora_1
-1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
-14
-
-CHOOSER
-1054
-143
-1192
-188
-num_promotora_2
-num_promotora_2
-1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
-9
 
 BUTTON
-1054
-203
-1185
-236
-crear_promotoras
-crear_promotoras
+1333
+539
+1503
+572
+Mostrar zonas urbanizables
+mostrar_zonas_urbanizables
 NIL
 1
 T
@@ -577,45 +962,658 @@ NIL
 NIL
 NIL
 NIL
+1
+
+BUTTON
+2073
+145
+2243
+180
+Mostrar edificación simulada
+mostrar_zonas_simuladas
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+TEXTBOX
+1339
+193
+1489
+473
+MUNICIPIOS:\n\n01) Ajalvir\n02) Alcala  de Henares\n03) Anchuelo\n04) Camarma de Esteruelas\n05) Coslada\n06) Daganzo de Arriba\n07) Fresno de Torote\n08) Loeches\n09) Meco\n10) Mejorada del Campo\n11) Paracuellos de Jarama\n12) San Fernando de Henares\n13) Santorcaz\n14) Los Santos de la Humosa\n15) Torrejon de Ardoz\n16) Torres de la Alameda\n17) Valdeavero\n18) Villalbilla
+11
+0.0
+1
+
+TEXTBOX
+1508
+502
+1695
+582
+URBANO (azul)\nURBANIZABLE (verde)\nNO URBANIZABLE (gris oscuro)\nSIST.GENERALES (naranja)
+13
+0.0
+1
+
+TEXTBOX
+1510
+613
+1612
+666
+CARA (naranja)\nMEDIA (amarillo)\nBARATA (verde)
+13
+0.0
 1
 
 SLIDER
-1052
-28
-1241
-61
-demanda
-demanda
+1856
+403
+2053
+436
+Proporcion_multifamiliar_alto
+Proporcion_multifamiliar_alto
+0
+100 - Proporcion_multifamiliar_medio - Proporcion_multifamiliar_bajo
+25.0
 1
-20
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1856
+435
+2053
+468
+Proporcion_multifamiliar_medio
+Proporcion_multifamiliar_medio
+0
+100
+50.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1856
+468
+2053
+501
+Proporcion_multifamiliar_bajo
+Proporcion_multifamiliar_bajo
+0
+100 - Proporcion_multifamiliar_medio - Proporcion_multifamiliar_alto
+25.0
+1
+1
+NIL
+HORIZONTAL
+
+BUTTON
+1504
+150
+1654
+183
+Ocultar nombre municipios
+ask nombres_municipios [ die ]
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+1335
+736
+1505
+773
+Mostrar estandar edificación
+mostrar_viviendas_por_precios
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+1707
+13
+2056
+127
+EJECUTAR MODELO
+modelo2
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+MONITOR
+2163
+44
+2277
+89
+Terreno disponible
+count patches with [disponible = 1]
+17
+1
+11
+
+MONITOR
+2081
+43
+2153
+88
+Iteración
+ticks
+17
+1
+11
+
+INPUTBOX
+1710
+178
+1845
+238
+Número_de_iteraciones
+5.0
+1
+0
+Number
+
+BUTTON
+1335
+861
+1505
+907
+Clasificación de las viviendas
+mostrar_tipo_viviendas
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+TEXTBOX
+1511
+18
+1632
+118
+INICIALIZACIÓN DEL MODELO\n\n(¡REQUERIDO ANTES DE EJECUTAR EL MODELO!)
+13
+0.0
+1
+
+TEXTBOX
+1512
+858
+1662
+906
+VACANTE (verde)\nMULTIFAMILIAR (azul)\nUNIFAMILIAR (naranja)
+13
+0.0
+1
+
+TEXTBOX
+1331
+126
+2073
+154
+__________________________________________________________________________________________________________________________
+11
+0.0
+1
+
+TEXTBOX
+1697
+10
+1712
+1172
+|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n
+11
+0.0
+1
+
+TEXTBOX
+2063
+10
+2078
+1172
+|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
+11
+0.0
+1
+
+TEXTBOX
+1713
+150
+1976
+182
+PARÁMETROS A SELECCIONAR:
+13
+0.0
+1
+
+TEXTBOX
+1332
+477
+1700
+515
+-------------------------------------------------------------------------
+15
+0.0
+1
+
+TEXTBOX
+2082
+13
+2232
+31
+MONOTORIZACIÓN:
+13
+0.0
+1
+
+TEXTBOX
+1334
+581
+1706
+599
+-------------------------------------------------------------------------
+15
+0.0
+1
+
+TEXTBOX
+1334
+669
+1717
+707
+-------------------------------------------------------------------------
+15
+0.0
+1
+
+TEXTBOX
+1333
+824
+1703
+842
+-------------------------------------------------------------------------
+15
+0.0
+1
+
+TEXTBOX
+1334
+920
+1703
+938
+-------------------------------------------------------------------------
+15
+0.0
+1
+
+TEXTBOX
+1333
+1160
+2513
+1188
+___________________________________________________________________________________________________________________________________________________________________________________________________
+11
+0.0
+1
+
+TEXTBOX
+2502
+12
+2517
+1174
+|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
+11
+0.0
+1
+
+TEXTBOX
+1717
+910
+2046
+966
+IMPORTANCIA DE LOS FACTORES (pesos que los distintos tipos de promotores deben tener en cuenta para la selección de zonas)
+13
+0.0
+1
+
+TEXTBOX
+1855
+174
+2053
+244
+Cada iteración representa un ciclo de construcción, determinado por la demanda que introduzca (recomendable 1 o 2 años)\n
+13
+0.0
+1
+
+SLIDER
+1715
+981
+2049
+1014
+Distancia_a_urbano_consolidado
+Distancia_a_urbano_consolidado
+0
+1
+0.3
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1715
+1013
+2049
+1046
+Distancia_a_carreteras
+Distancia_a_carreteras
+0
+1
+0.15
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1715
+1046
+2049
+1079
+Distancia_a_transporte_público
+Distancia_a_transporte_público
+0
+1
+0.29
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1715
+1079
+2049
+1112
+Distancia_a_zonas_de_trabajo
+Distancia_a_zonas_de_trabajo
+0
+1
+0.2
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1715
+1112
+2049
+1145
+Distancia_a_zonas_verdes
+Distancia_a_zonas_verdes
+0
+1
+0.1
+0.01
+1
+NIL
+HORIZONTAL
+
+INPUTBOX
+1709
+404
+1844
+502
+Demanda_multifamiliar
+100.0
+1
+0
+Number
+
+TEXTBOX
+1710
+260
+1960
+280
+Demanda de viviendas de tipo unifamiliar:
+13
+0.0
+1
+
+TEXTBOX
+1711
+380
+1964
+399
+Demanda de viviendas de tipo multifamiliar:\n
+13
+0.0
+1
+
+SLIDER
+1855
+284
+2052
+317
+Proporcion_unifamiliar_medio
+Proporcion_unifamiliar_medio
+0
+100
+70.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1855
+317
+2052
+350
+Proporcion_unifamiliar_alto
+Proporcion_unifamiliar_alto
+0
+100 - Proporcion_unifamiliar_medio
+30.0
+1
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+1699
+241
+2066
+259
+-------------------------------------------------------------------------
+15
+0.0
+1
+
+TEXTBOX
+1698
+358
+2070
+376
+·········································································
+15
+0.0
+1
+
+TEXTBOX
+1698
+506
+2081
+524
+-------------------------------------------------------------------------
+15
+0.0
+1
+
+TEXTBOX
+1717
+535
+1867
+553
+NÚMERO DE PROMOTORAS:
+11
+0.0
+1
+
+INPUTBOX
+1714
+568
+1865
+628
+Número_promotoras_tipo_1
 10.0
 1
+0
+Number
+
+INPUTBOX
+1713
+673
+1864
+733
+Número_promotoras_tipo_2
+20.0
 1
-porcentaje (%)
-HORIZONTAL
+0
+Number
+
+TEXTBOX
+1881
+569
+2059
+617
+Promotoras tipo 1: generalistas, proyectos de todo tipo
+13
+0.0
+1
+
+TEXTBOX
+1880
+674
+2052
+738
+Promotoras tipo 2: especializadas, enfocadas en proyectos concretos
+13
+0.0
+1
+
+TEXTBOX
+1699
+640
+2068
+658
+·········································································
+15
+0.0
+1
+
+TEXTBOX
+1717
+768
+2040
+804
+Grado de diferenciación entre cada tipo de promotora: 0 = ninguno, 1 = máximo
+13
+0.0
+1
 
 SLIDER
-1276
-29
-1448
-62
-radio-de-busqueda
-radio-de-busqueda
+1711
+819
+2053
+852
+Diferenciación
+Diferenciación
+0
 1
-100
-2.0
-1
+0.5
+0.1
 1
 NIL
 HORIZONTAL
 
+TEXTBOX
+1698
+745
+2070
+763
+-------------------------------------------------------------------------
+15
+0.0
+1
+
+TEXTBOX
+1699
+871
+2065
+889
+-------------------------------------------------------------------------
+15
+0.0
+1
+
 BUTTON
-1054
-259
-1134
-292
-construir
-construir
+2072
+192
+2243
+225
+NIL
+establecer_aptitudes
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+2074
+238
+2242
+271
+NIL
+crear_promotoras
 NIL
 1
 T
