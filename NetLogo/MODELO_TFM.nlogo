@@ -85,6 +85,8 @@ globals [
   preferencia_zonas_tr_medio_uni_p2
   preferencia_zonas_ver_medio_uni_p2
 
+  estandar
+
 ]
 
 ;----------------------------------------------------------------------------------------------------------------
@@ -287,21 +289,6 @@ end
 
 ;-------------------------------------------------------------------------------------------------------------------
 
-;###################################  NÚMERO DE EDIFICACIONES SIMULADAS  ###########################################
-
-to mostrar_zonas_simuladas
-
-  let edificacion patches with [modificado = TRUE]
-  ask edificacion [set pcolor blue]
-
-  show (count edificacion with [precio_viviendas = 1])
-  show (count edificacion with [precio_viviendas = 2])
-  show (count edificacion with [precio_viviendas = 3])
-
-end
-
-;-------------------------------------------------------------------------------------------------------------------
-
 ;################################  DISTANCIA A ÁREAS URBANAS CONSOLIDADAS  #########################################
 
 to mostrar_distancia_zonas_urbanas_consolidadas
@@ -390,6 +377,24 @@ to mostrar_viviendas_por_precios
 
   ask patches with [(precio_viviendas = 3) and (tipo_viviendas > 1)] [set pcolor orange]
   show (word "Edificaciones caras " count patches with [(precio_viviendas = 3) and (tipo_viviendas > 1)])
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
+;###################################  NÚMERO DE EDIFICACIONES SIMULADAS  ###########################################
+
+to mostrar_zonas_simuladas
+
+  ask patches [set pcolor 8]
+  let edificacion patches with [modificado = 1]
+  ask edificacion [set pcolor blue]
+
+  show (word "Total construido: "count edificacion)
+
+  show (word "estandar 1 (alto): "count edificacion with [estandar = 1])
+  show (word "estandar 2 (medio): " count edificacion with [estandar = 2])
+  show (word "estandar 3 (alto): " count edificacion with [estandar = 3])
 
 end
 
@@ -628,7 +633,6 @@ to crear_promotoras
     set area_influencia area_influecia_de_cada_promotora self radio_busqueda
   ]
 
-  seleccion_mejor_pixel
 
 
 end
@@ -649,27 +653,90 @@ to seleccion_mejor_pixel
 
     set mejor_aptitud max (list mejor_aptitud_mu_a mejor_aptitud_mu_m mejor_aptitud_mu_b mejor_aptitud_un_a mejor_aptitud_un_m)
 
-    ;if mejor_aptitud = mejor_aptitud_un_a construir self area_influencia [ask promotora1 who [ask area_influencia with [aptitud_multi_alto_p1 = mejor_aptitud] [set modificado 1]]]
-    if mejor_aptitud = mejor_aptitud_un_a [construir area_influencia mejor_aptitud "aptitud_multi_alto_p1"]
+    if mejor_aptitud = mejor_aptitud_un_a [
+      pixel_a_construir 1 mejor_aptitud area_influencia
+    ]
+
+    if mejor_aptitud = mejor_aptitud_un_m [
+      pixel_a_construir 2 mejor_aptitud area_influencia
+    ]
+
+    if mejor_aptitud = mejor_aptitud_mu_a [
+      pixel_a_construir 3 mejor_aptitud area_influencia
+    ]
+
+    if mejor_aptitud = mejor_aptitud_mu_m [
+      pixel_a_construir 4 mejor_aptitud area_influencia
+    ]
+
+    if mejor_aptitud = mejor_aptitud_mu_b [
+      pixel_a_construir 5 mejor_aptitud area_influencia
+    ]
 
   ]
 
-    ask promotoras2 [
-    set mejor_aptitud max (list (max [aptitud_multi_alto_p2] of area_influencia) (max [aptitud_multi_medio_p2] of area_influencia) (max [aptitud_multi_bajo_p2] of area_influencia) (max [aptitud_uni_alto_p2] of area_influencia) (max [aptitud_uni_medio_p2] of area_influencia))
-  ]
 
 end
 ;-------------------------------------------------------------------------------------------------------------------
 
 ;#########################  ESTABLECIMIENTO DEL AREA DE ENFLUENCIA DE CADA PROMOTORA  ##############################
 
-to construir [area aptitud tipo]
 
-  if tipo = "aptitud_multi_alto_p1" [ask area_influencia with [aptitud_multi_alto_p1 = mejor_aptitud] [set modificado 1]]
+
+to pixel_a_construir [tipo_mejor_aptitud valor area]
+
+  if tipo_mejor_aptitud = 1 [
+
+    ask area with [aptitud_uni_alto_p1 = valor] [set modificado 1]
+    ask area with [aptitud_uni_alto_p1 = valor] [set disponible 0]
+    ask area with [aptitud_uni_alto_p1 = valor] [set tipo_viviendas 3]
+    ask area with [aptitud_uni_alto_p1 = valor] [set estandar 1]
+  ]
+
+  if tipo_mejor_aptitud = 2 [
+
+    ask area with [aptitud_uni_medio_p1 = valor] [set modificado 1]
+    ask area with [aptitud_uni_medio_p1 = valor] [set disponible 0]
+    ask area with [aptitud_uni_medio_p1 = valor] [set tipo_viviendas 3]
+    ask area with [aptitud_uni_medio_p1 = valor] [set estandar 2]
+  ]
+
+  if tipo_mejor_aptitud = 3 [
+
+    ask area with [aptitud_multi_alto_p1 = valor] [set modificado 1]
+    ask area with [aptitud_multi_alto_p1 = valor] [set disponible 0]
+    ask area with [aptitud_multi_alto_p1 = valor] [set tipo_viviendas 2]
+    ask area with [aptitud_multi_alto_p1 = valor] [set estandar 1]
+  ]
+
+  if tipo_mejor_aptitud = 4 [
+
+    ask area with [aptitud_multi_medio_p1 = valor] [set modificado 1]
+    ask area with [aptitud_multi_medio_p1 = valor] [set disponible 0]
+    ask area with [aptitud_multi_medio_p1 = valor] [set tipo_viviendas 2]
+    ask area with [aptitud_multi_medio_p1 = valor] [set estandar 2]
+  ]
+
+  if tipo_mejor_aptitud = 5 [
+
+    ask area with [aptitud_multi_bajo_p1 = valor] [set modificado 1]
+    ask area with [aptitud_multi_bajo_p1 = valor] [set disponible 0]
+    ask area with [aptitud_multi_bajo_p1 = valor] [set tipo_viviendas 2]
+    ask area with [aptitud_multi_bajo_p1 = valor] [set estandar 3]
+  ]
 
 end
 
 
+
+to construir
+  ask promotoras1[
+
+    move-to one-of patches with [disponible = 1]
+    set area_influencia area_influecia_de_cada_promotora self radio_busqueda
+    seleccion_mejor_pixel
+  ]
+end
 
 
 to-report area_influecia_de_cada_promotora [promotora distancia]
@@ -966,9 +1033,9 @@ NIL
 
 BUTTON
 2073
-145
+139
 2243
-180
+174
 Mostrar edificación simulada
 mostrar_zonas_simuladas
 NIL
@@ -1591,10 +1658,10 @@ TEXTBOX
 1
 
 BUTTON
-2072
-192
-2243
-225
+2073
+176
+2244
+209
 NIL
 establecer_aptitudes
 NIL
@@ -1609,12 +1676,29 @@ NIL
 
 BUTTON
 2074
-238
+211
 2242
-271
+244
 NIL
 crear_promotoras
 NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+2074
+245
+2243
+278
+NIL
+construir
+T
 1
 T
 OBSERVER
