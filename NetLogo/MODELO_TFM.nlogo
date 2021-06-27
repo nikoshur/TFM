@@ -18,6 +18,8 @@ globals [
   dist_zonas_trabajo_dataset ;; raster con las distancias a zonas de trabajo
   dist_zonas_verdes_dataset ;; raster con las distancias a zonas verdes
 
+  demanda_total
+
   demanda_multifamiliar_alto demanda_multifamiliar_medio demanda_multifamiliar_bajo ;; demanda de multi
   demanda_suplida_multifamiliar_alto demanda_suplida_multifamiliar_medio demanda_suplida_multifamiliar_bajo ;; demandas suplidas por iteracion
 
@@ -85,8 +87,18 @@ globals [
   preferencia_zonas_tr_medio_uni_p2
   preferencia_zonas_ver_medio_uni_p2
 
-  estandar
+  ;; variables para evaluar la cantidad de construcciones de cada tipo de promotora
+  num_constru_uni_p1
+  num_constru_multi_p1
+  num_constru_alto_p1
+  num_constru_medio_p1
+  num_constru_bajo_p1
 
+  num_constru_uni_p2
+  num_constru_multi_p2
+  num_constru_alto_p2
+  num_constru_medio_p2
+  num_constru_bajo_p2
 ]
 
 ;----------------------------------------------------------------------------------------------------------------
@@ -113,6 +125,7 @@ patches-own [
 
   disponible ;; variable que define si es posible construir en el pixel o no
   modificado ;; variable que define si el pixel ha sido modificado o no
+  estandar ;; variable que define el estandar de la edificacion
 
   ;; valores de aptitud de cada tipo de edificacion para las promotoras tipo 1
   aptitud_multi_alto_p1
@@ -127,16 +140,16 @@ patches-own [
   aptitud_multi_bajo_p2
   aptitud_uni_alto_p2
   aptitud_uni_medio_p2
-
-  ]
+]
 
 promotoras1-own [
 
   area_influencia
   radio_busqueda
   mejor_aptitud
-  pixel_deseado
-
+  tipologia_a_construir
+  intentos
+  reinicios
 ]
 
 promotoras2-own [
@@ -144,9 +157,9 @@ promotoras2-own [
   area_influencia
   radio_busqueda
   mejor_aptitud
-  pixel_deseado
-  especialidad
-
+  tipologia_a_construir
+  intentos
+  reinicios
 ]
 
 ;------------------------------------------------------------------------------------------------------------------
@@ -184,9 +197,8 @@ to inicio
   gis:apply-raster dist_zonas_verdes_dataset        dist_zonas_verdes
   gis:apply-raster tipo_viviendas_dataset           tipo_viviendas
 
-  ask patches with [(area_estudio > 0) and (zonificacion = 2) and (tipo_viviendas = 1)][
-    set disponible 1
-  ]
+  ;; establece aquellos pixeles que son susceptibles a ser edificados, utilizando los datos de entrada
+  ask patches with [(area_estudio > 0) and (zonificacion = 2) and (tipo_viviendas = 1)] [set disponible 1]
 
   mostrar_area_estudio
 
@@ -241,20 +253,21 @@ to mostrar_zonificacion
   show (word "Zonas clasificados como ´urbanizable` (tipo 2): "  count patches with [zonificacion = 2])
   show (word "Zonas clasificados como ´sistemas generales` (tipo 4): "  count patches with [zonificacion = 4])
 
-  ask patches with [(zonificacion = 1) and (area_estudio > 0)][set pcolor blue] ;urbano (azul)
-  ask patches with [(zonificacion = 2) and (area_estudio > 0)][set pcolor green] ;urbanizable (verde)
-  ask patches with [(zonificacion = 4) and (area_estudio > 0)][set pcolor orange] ;sistemas generales (naranja)
+  ask patches with [(zonificacion = 1) and (area_estudio > 0)] [set pcolor blue] ;urbano (azul)
+  ask patches with [(zonificacion = 2) and (area_estudio > 0)] [set pcolor green] ;urbanizable (verde)
+  ask patches with [(zonificacion = 4) and (area_estudio > 0)] [set pcolor orange] ;sistemas generales (naranja)
 
  end
 
 ;------------------------------------------------------------------------------------------------------------------
 
 ;################################################  URBANIZABLES  ##################################################
+;; muestra aquellas zonas que pueden ser edificadas
 
 to mostrar_zonas_urbanizables
 
   ask patches [set pcolor 8]
-  ask patches with [(area_estudio > 0) and (zonificacion = 2) and (tipo_viviendas = 1)][set pcolor green]
+  ask patches with [(area_estudio > 0) and (zonificacion = 2) and (tipo_viviendas = 1)] [set pcolor green]
 
 end
 
@@ -270,15 +283,16 @@ to mostrar_estandar_zona
   show (word "Zonas con viviendas medias  (2):"  count patches with [precio_viviendas = 2])
   show (word "Zonas con viviendas caras   (3):"  count patches with [precio_viviendas = 3])
 
-  ask patches with [precio_viviendas = 1][set pcolor green]
-  ask patches with [precio_viviendas = 2][set pcolor yellow]
-  ask patches with [precio_viviendas = 3][set pcolor orange]
+  ask patches with [precio_viviendas = 1] [set pcolor green]
+  ask patches with [precio_viviendas = 2] [set pcolor yellow]
+  ask patches with [precio_viviendas = 3] [set pcolor orange]
 
 end
 
 ;-------------------------------------------------------------------------------------------------------------------
 
 ;################################  NÚMERO DE EDIFICACIONES CARGA INICIAL  ##########################################
+;; muestra en rojo aquellas zonas que presentan algun tipo de edificacion residencial
 
 to mostrar_zonas_edificadas
   ask patches [set pcolor 8]
@@ -290,6 +304,7 @@ end
 ;-------------------------------------------------------------------------------------------------------------------
 
 ;################################  DISTANCIA A ÁREAS URBANAS CONSOLIDADAS  #########################################
+;; muestra el raster de distancias a areas urbanas consolidadas
 
 to mostrar_distancia_zonas_urbanas_consolidadas
 
@@ -302,6 +317,7 @@ end
 ;-------------------------------------------------------------------------------------------------------------------
 
 ;#########################################  DISTANCIA A CARRETERAS  ################################################
+;; muestra el raster de distancias a carreteras
 
 to mostrar_distancia_carreteras
 
@@ -314,18 +330,20 @@ end
 ;-------------------------------------------------------------------------------------------------------------------
 
 ;#######################################  DISTANCIA A PARADAS DE TREN  #############################################
+;; muestra el raster de distancias a estaciones de tren
 
 to mostrar_distancia_transporte_publico
 
   ask patches [set pcolor 8]
-  ask patches with [(area_estudio > 0) and (dist_estaciones = 5000)][set pcolor 117]
-  ask patches with [(area_estudio > 0) and (dist_estaciones = 10000)][set pcolor 115]
+  ask patches with [(area_estudio > 0) and (dist_estaciones = 5000)] [set pcolor 117]
+  ask patches with [(area_estudio > 0) and (dist_estaciones = 10000)] [set pcolor 115]
 
 end
 
 ;-------------------------------------------------------------------------------------------------------------------
 
 ;#######################################  DISTANCIA A ZONAS DE TRABAJO   ###########################################
+;; muestra el raster de distancias a zonas de trabajo
 
 to mostrar_distancia_zonas_trabajo
 
@@ -338,6 +356,7 @@ end
 ;-------------------------------------------------------------------------------------------------------------------
 
 ;#######################################  DISTANCIA A ZONAS VERDES  ################################################
+;; muestra el raster de distancias a zonas verdes
 
 to mostrar_distancia_zonas_verdes
 
@@ -349,8 +368,8 @@ end
 
 ;-------------------------------------------------------------------------------------------------------------------
 
-;########################################  ZONAS DE ESTANDAR  #####################################################
-;; muestra la clasificacion de cada pixel en funcion de la categoria de precio de vivienda que tiene
+;#####################################  ZONIFICACION RESIDENCIAL  #################################################
+;; muestra la clasificacion de cada pixel en funcion del tipo de edificacion residencial que tiene, si lo tiene
 
 to mostrar_tipo_viviendas
 
@@ -366,6 +385,7 @@ end
 ;-------------------------------------------------------------------------------------------------------------------
 
 ;########################################  PRECIO DE LAS VIVIENDAS  ################################################
+;; muestra el precio que tienen las edificaciones
 
 to mostrar_viviendas_por_precios
 
@@ -383,18 +403,48 @@ end
 ;-------------------------------------------------------------------------------------------------------------------
 
 ;###################################  NÚMERO DE EDIFICACIONES SIMULADAS  ###########################################
+;; muestra, en funcion del formato elegido, las edificaciones simuladas
 
-to mostrar_zonas_simuladas
+to mostrar_zonas_simuladas [tipo_visualizacion]
 
   ask patches [set pcolor 8]
+
   let edificacion patches with [modificado = 1]
-  ask edificacion [set pcolor blue]
+  show (word "Total construido: "count edificacion) ;; mostrar total construido
 
-  show (word "Total construido: "count edificacion)
+  if tipo_visualizacion = "TIPOLOGIA" [
+    ask edificacion with [tipo_viviendas = 2] [set pcolor blue] ;; nuevas multifamiliares
+    ask edificacion with [tipo_viviendas = 3] [set pcolor orange] ;; nuevas unifamiliares
 
-  show (word "estandar 1 (alto): "count edificacion with [estandar = 1])
-  show (word "estandar 2 (medio): " count edificacion with [estandar = 2])
-  show (word "estandar 3 (alto): " count edificacion with [estandar = 3])
+    show (word "multifamiliar: "count edificacion with [tipo_viviendas = 2])
+    show (word "unifamiliar: " count edificacion with [tipo_viviendas = 3])
+  ]
+
+  if tipo_visualizacion = "ESTANDAR" [
+    ask edificacion with [estandar = 1] [set pcolor red] ;; estandar alto
+    ask edificacion with [estandar = 2] [set pcolor green] ;; estandar medio
+    ask edificacion with [estandar = 3] [set pcolor blue] ;; estandar bajo
+
+    show (word "estandar alto: "count edificacion with [estandar = 1])
+    show (word "estandar medio: " count edificacion with [estandar = 2])
+    show (word "estandar alto: " count edificacion with [estandar = 3])
+  ]
+
+  if tipo_visualizacion = "TIPOLOGIA_Y_ESTANDAR" [
+    ask edificacion with [(tipo_viviendas = 2) and (estandar = 1)] [set pcolor 115] ;; nuevas multifamiliares de estandar alto
+    ask edificacion with [(tipo_viviendas = 2) and (estandar = 2)] [set pcolor 126] ;; nuevas multifamiliares de estandar medio
+    ask edificacion with [(tipo_viviendas = 2) and (estandar = 3)] [set pcolor 135] ;; nuevas multifamiliares de estandar bajo
+
+    ask edificacion with [(tipo_viviendas = 3) and (estandar = 1) ] [set pcolor 25] ;; nuevas unifamiliares de estandar alto
+    ask edificacion with [(tipo_viviendas = 3) and (estandar = 2) ] [set pcolor 35] ;; nuevas unifamiliares de estandar medio
+
+    show (word "multifamiliar de estandar alto: "count edificacion with [(tipo_viviendas = 2) and (estandar = 1)])
+    show (word "multifamiliar de estandar medio: " count edificacion with [(tipo_viviendas = 2) and (estandar = 2)])
+    show (word "multifamiliar de estandar bajo: " count edificacion with [(tipo_viviendas = 2) and (estandar = 3)])
+
+    show (word "unifamiliar de estandar alto: "count edificacion with [(tipo_viviendas = 3) and (estandar = 1)])
+    show (word "unifamiliar de estandar medio: " count edificacion with [(tipo_viviendas = 3) and (estandar = 2)])
+  ]
 
 end
 
@@ -410,30 +460,13 @@ end
 ;-------------------------------------------------------------------------------------------------------------------
 
 
-;###################################  TERRENO DISPONIBLE PARA CONSTUIR  ############################################
-
-to terreno_disponible
-
-  ask patches [set pcolor 8]
-
-  ask patches with [(disponible = 1) and (precio_viviendas = 1)] [set pcolor green]
-  ask patches with [(disponible = 1) and (precio_viviendas = 2)] [set pcolor yellow]
-  ask patches with [(disponible = 1) and (precio_viviendas = 3)] [set pcolor orange]
-
-  show (word "Zonas disponibles para construir " count patches with [(disponible = 1)]
-  ", barata(1): " count patches with [(disponible = 1) and (precio_viviendas = 1)]
-  ", media(2): " count patches with [(disponible = 1) and (precio_viviendas = 2)]
-  ", cara(3): " count patches with [(disponible = 1) and (precio_viviendas = 3)])
-
-end
-
-;-------------------------------------------------------------------------------------------------------------------
-
 ;#######################  CALCULAR LAS DEMANDAS DE CADA TIPO DE VIVIENDA A CONSTRUIR  ##############################
+;; calcula las demandas de cada tipo que hay que construir en cada iteracion
 
 to calcular_demandas
 
-  show (word "Demanda total de viviendas: " (demanda_multifamiliar + demanda_unifamiliar))
+  set demanda_total (demanda_multifamiliar + demanda_unifamiliar)
+  show (word "Demanda total de viviendas: " demanda_total)
 
   set demanda_multifamiliar_alto   (demanda_multifamiliar * (Proporcion_multifamiliar_alto  / 100))
   set demanda_multifamiliar_medio  (demanda_multifamiliar * (Proporcion_multifamiliar_medio / 100))
@@ -453,7 +486,35 @@ end
 
 ;-------------------------------------------------------------------------------------------------------------------
 
+;#######################################  ACTUALIZACION DE LA DEMANA  ##############################################
+;; actualiza el valor de demanta total para la iteracion actual
+
+to actualizar_demandas
+
+  set demanda_total (demanda_multifamiliar_alto + demanda_multifamiliar_medio + demanda_multifamiliar_bajo +
+                     demanda_unifamiliar_alto + demanda_unifamiliar_medio)
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
+;#################################  REPARTO DE DEMANDA ENTRE LAS PROMOTORAS  #######################################
+;; realiza el reparto de la demanda entre el total de promotoras
+
+to repartir_demandas
+
+  let demanda_total_promotoras1 (demanda_total * (Número_promotoras_tipo_1 / (Número_promotoras_tipo_1 + Número_promotoras_tipo_2)))
+  let demanda_cada_promotora1 (demanda_total_promotoras1 / Número_promotoras_tipo_1)
+
+  let demanda_total_promotoras2 (demanda_total * (Número_promotoras_tipo_2 / (Número_promotoras_tipo_1 + Número_promotoras_tipo_2)))
+  let demanda_cada_promotora2 (demanda_total_promotoras2 / Número_promotoras_tipo_2)
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
 ;##############################  PONDERACIONES DE CADA TIPO DE EDIFICACION  ########################################
+;; establece los coeficientes de ponderacion que cada tipo de promotora aplica sobre la zona, utilizando los datos
+;; introducidos por el usuario
 
 to establecer_ponderaciones
 
@@ -549,6 +610,7 @@ end
 ;-------------------------------------------------------------------------------------------------------------------
 
 ;###################################  ESTABLECIMINETO DE LAS APTITUDES  ############################################
+;; realiza el calculo de la aptitud final para cada tipo de edificacion segun el tipo de promotora
 
 to establecer_aptitudes
 
@@ -604,42 +666,76 @@ end
 ;-------------------------------------------------------------------------------------------------------------------
 
 ;######################################  CREACION DE LOS PROMOTORES  ###############################################
-
+;; crea los dos tipos de agentes de promotoras
 to crear_promotoras
-
-  calcular_demandas
 
   ask promotoras1 [die]
   create-promotoras1 Número_promotoras_tipo_1
 
   ask promotoras1 [
+
     set radio_busqueda (10 + (Diferenciación * 30))
     set shape "circle"
     set color violet
     set size radio_busqueda
-    move-to one-of patches with [disponible = 1]
-    set area_influencia area_influecia_de_cada_promotora self radio_busqueda
+    set intentos 0
+    set reinicios 0
   ]
 
   ask promotoras2 [die]
   create-promotoras2 Número_promotoras_tipo_2
 
   ask promotoras2 [
+
     set radio_busqueda (10 + (precision (Diferenciación * 10) 0))
     set shape "circle"
     set color red
     set size radio_busqueda
+    set intentos 0
+    set reinicios 0
+  ]
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
+;#############################  MOVER A LAS PROMOTORAS POR EL AREA DE ESTUDIO  #####################################
+;; mueve las promotoras por el area que puede ser edificada
+
+to movilizar_promotoras
+
+  ask promotoras1 [
+    move-to one-of patches with [disponible = 1]
+    set area_influencia area_influecia_de_cada_promotora self radio_busqueda
+  ]
+
+  ask promotoras2 [
     move-to one-of patches with [disponible = 1]
     set area_influencia area_influecia_de_cada_promotora self radio_busqueda
   ]
 
 
+end
+;-------------------------------------------------------------------------------------------------------------------
+
+;###############################  AREA DE INFLUENCIA QUE TIENE CADA PROMOTORA  #####################################
+;; devuelve los pixeles a los que cada promotora tiene acceso
+
+to-report area_influecia_de_cada_promotora [promotora distancia]
+
+  let disponibilidad patches with [disponible = 1]
+  let aqui promotora
+  let area disponibilidad with [distance aqui < distancia]
+
+  report area
 
 end
 
-; ask promotora1 349 [ask area_influencia [set pcolor white]]
-; ask promotora1 139 [ask area_influencia with [dist_carreteras = 9953] [set modificado 0]]
+;-------------------------------------------------------------------------------------------------------------------
 
+;####################################  SELECCION DE LA ZONA MAS IDÓNEA  ############################################
+;; de entre todos los pixeles a los que tiene acceso cada promotora, selecciona aquel que tiene mayor aptitud para
+;; ser construido, y lo posiciona sobre ese pixel
 
 to seleccion_mejor_pixel
 
@@ -651,101 +747,405 @@ to seleccion_mejor_pixel
     let mejor_aptitud_un_a (max [aptitud_uni_alto_p1] of area_influencia)
     let mejor_aptitud_un_m (max [aptitud_uni_medio_p1] of area_influencia)
 
-    set mejor_aptitud max (list mejor_aptitud_mu_a mejor_aptitud_mu_m mejor_aptitud_mu_b mejor_aptitud_un_a mejor_aptitud_un_m)
+    let orden_mejores sort (list mejor_aptitud_mu_a mejor_aptitud_mu_m mejor_aptitud_mu_b mejor_aptitud_un_a mejor_aptitud_un_m)
+
+    if intentos <= 5 [
+      set mejor_aptitud item 0 orden_mejores
+    ]
+
+    if intentos > 5 and intentos <= 10[
+      set mejor_aptitud item 1 orden_mejores
+    ]
+
+    if intentos > 10 and intentos <= 13[
+      set mejor_aptitud item 2 orden_mejores
+    ]
+
+    if intentos > 13 and intentos <= 15[
+      set mejor_aptitud item 3 orden_mejores
+    ]
+
+    if intentos > 15 and intentos <= 17[
+      set mejor_aptitud item 4 orden_mejores
+    ]
 
     if mejor_aptitud = mejor_aptitud_un_a [
-      pixel_a_construir 1 mejor_aptitud area_influencia
+
+      let list_coor posicion_pixel 1 mejor_aptitud area_influencia
+      move-to patch (item 0 list_coor) (item 1 list_coor)
+      set tipologia_a_construir "unifamiliar_estandar_alto"
     ]
 
     if mejor_aptitud = mejor_aptitud_un_m [
-      pixel_a_construir 2 mejor_aptitud area_influencia
+
+      let list_coor posicion_pixel 2 mejor_aptitud area_influencia
+      move-to patch (item 0 list_coor) (item 1 list_coor)
+      set tipologia_a_construir "unifamiliar_estandar_medio"
     ]
 
     if mejor_aptitud = mejor_aptitud_mu_a [
-      pixel_a_construir 3 mejor_aptitud area_influencia
+
+      let list_coor posicion_pixel 3 mejor_aptitud area_influencia
+      move-to patch (item 0 list_coor) (item 1 list_coor)
+      set tipologia_a_construir "multifamiliar_estandar_alto"
     ]
 
     if mejor_aptitud = mejor_aptitud_mu_m [
-      pixel_a_construir 4 mejor_aptitud area_influencia
+
+      let list_coor posicion_pixel 4 mejor_aptitud area_influencia
+      move-to patch (item 0 list_coor) (item 1 list_coor)
+      set tipologia_a_construir "multifamiliar_estandar_medio"
     ]
 
     if mejor_aptitud = mejor_aptitud_mu_b [
-      pixel_a_construir 5 mejor_aptitud area_influencia
+
+      let list_coor posicion_pixel 5 mejor_aptitud area_influencia
+      move-to patch (item 0 list_coor) (item 1 list_coor)
+      set tipologia_a_construir "multifamiliar_estandar_bajo"
+    ]
+  ]
+
+  ask promotoras2 [
+
+    let mejor_aptitud_mu_a (max [aptitud_multi_alto_p2] of area_influencia)
+    let mejor_aptitud_mu_m (max [aptitud_multi_medio_p2] of area_influencia)
+    let mejor_aptitud_mu_b (max [aptitud_multi_bajo_p2] of area_influencia)
+    let mejor_aptitud_un_a (max [aptitud_uni_alto_p2] of area_influencia)
+    let mejor_aptitud_un_m (max [aptitud_uni_medio_p2] of area_influencia)
+
+    let orden_mejores sort (list mejor_aptitud_mu_a mejor_aptitud_mu_m mejor_aptitud_mu_b mejor_aptitud_un_a mejor_aptitud_un_m)
+
+    if intentos <= 3 [
+      set mejor_aptitud item 0 orden_mejores
     ]
 
+    if intentos > 3 and intentos <= 6[
+      set mejor_aptitud item 1 orden_mejores
+    ]
+
+    if intentos > 6 and intentos <= 9[
+      set mejor_aptitud item 2 orden_mejores
+    ]
+
+    if intentos > 9 and intentos <= 15[
+      set mejor_aptitud item 3 orden_mejores
+    ]
+
+    if intentos > 15 and intentos <= 25[
+      set mejor_aptitud item 4 orden_mejores
+    ]
+
+    if mejor_aptitud = mejor_aptitud_un_a [
+
+      let list_coor posicion_pixel 6 mejor_aptitud area_influencia
+      move-to patch (item 0 list_coor) (item 1 list_coor)
+      set tipologia_a_construir "unifamiliar_estandar_alto"
+    ]
+
+    if mejor_aptitud = mejor_aptitud_un_m [
+
+      let list_coor posicion_pixel 7 mejor_aptitud area_influencia
+      move-to patch (item 0 list_coor) (item 1 list_coor)
+      set tipologia_a_construir "unifamiliar_estandar_medio"
+    ]
+
+    if mejor_aptitud = mejor_aptitud_mu_a [
+
+      let list_coor posicion_pixel 8 mejor_aptitud area_influencia
+      move-to patch (item 0 list_coor) (item 1 list_coor)
+      set tipologia_a_construir "multifamiliar_estandar_alto"
+    ]
+
+    if mejor_aptitud = mejor_aptitud_mu_m [
+
+      let list_coor posicion_pixel 9 mejor_aptitud area_influencia
+      move-to patch (item 0 list_coor) (item 1 list_coor)
+      set tipologia_a_construir "multifamiliar_estandar_medio"
+    ]
+
+    if mejor_aptitud = mejor_aptitud_mu_b [
+
+      let list_coor posicion_pixel 10 mejor_aptitud area_influencia
+      move-to patch (item 0 list_coor) (item 1 list_coor)
+      set tipologia_a_construir "multifamiliar_estandar_bajo"
+    ]
   ]
 
 
 end
 ;-------------------------------------------------------------------------------------------------------------------
 
-;#########################  ESTABLECIMIENTO DEL AREA DE ENFLUENCIA DE CADA PROMOTORA  ##############################
+;#########################################  LOCALIZACION DEL PIXEL  ################################################
+;; devuelve la localizacion del pixel con mayor aptitud
 
-
-
-to pixel_a_construir [tipo_mejor_aptitud valor area]
+to-report posicion_pixel [tipo_mejor_aptitud valor area]
 
   if tipo_mejor_aptitud = 1 [
 
-    ask area with [aptitud_uni_alto_p1 = valor] [set modificado 1]
-    ask area with [aptitud_uni_alto_p1 = valor] [set disponible 0]
-    ask area with [aptitud_uni_alto_p1 = valor] [set tipo_viviendas 3]
-    ask area with [aptitud_uni_alto_p1 = valor] [set estandar 1]
+    let pixel area with [aptitud_uni_alto_p1 = valor]
+    let x_coor [pxcor] of pixel
+    let y_coor [pycor] of pixel
+
+    report list item 0 x_coor item 0 y_coor
   ]
 
   if tipo_mejor_aptitud = 2 [
 
-    ask area with [aptitud_uni_medio_p1 = valor] [set modificado 1]
-    ask area with [aptitud_uni_medio_p1 = valor] [set disponible 0]
-    ask area with [aptitud_uni_medio_p1 = valor] [set tipo_viviendas 3]
-    ask area with [aptitud_uni_medio_p1 = valor] [set estandar 2]
+    let pixel area with [aptitud_uni_medio_p1 = valor]
+    let x_coor [pxcor] of pixel
+    let y_coor [pycor] of pixel
+
+    report list item 0 x_coor item 0 y_coor
   ]
 
   if tipo_mejor_aptitud = 3 [
 
-    ask area with [aptitud_multi_alto_p1 = valor] [set modificado 1]
-    ask area with [aptitud_multi_alto_p1 = valor] [set disponible 0]
-    ask area with [aptitud_multi_alto_p1 = valor] [set tipo_viviendas 2]
-    ask area with [aptitud_multi_alto_p1 = valor] [set estandar 1]
+    let pixel area with [aptitud_multi_alto_p1 = valor]
+    let x_coor [pxcor] of pixel
+    let y_coor [pycor] of pixel
+
+    report list item 0 x_coor item 0 y_coor
   ]
 
   if tipo_mejor_aptitud = 4 [
 
-    ask area with [aptitud_multi_medio_p1 = valor] [set modificado 1]
-    ask area with [aptitud_multi_medio_p1 = valor] [set disponible 0]
-    ask area with [aptitud_multi_medio_p1 = valor] [set tipo_viviendas 2]
-    ask area with [aptitud_multi_medio_p1 = valor] [set estandar 2]
+    let pixel area with [aptitud_multi_medio_p1 = valor]
+    let x_coor [pxcor] of pixel
+    let y_coor [pycor] of pixel
+
+    report list item 0 x_coor item 0 y_coor
   ]
 
   if tipo_mejor_aptitud = 5 [
 
-    ask area with [aptitud_multi_bajo_p1 = valor] [set modificado 1]
-    ask area with [aptitud_multi_bajo_p1 = valor] [set disponible 0]
-    ask area with [aptitud_multi_bajo_p1 = valor] [set tipo_viviendas 2]
-    ask area with [aptitud_multi_bajo_p1 = valor] [set estandar 3]
+    let pixel area with [aptitud_multi_bajo_p1 = valor]
+    let x_coor [pxcor] of pixel
+    let y_coor [pycor] of pixel
+
+    report list item 0 x_coor item 0 y_coor
+  ]
+
+  if tipo_mejor_aptitud = 6 [
+
+    let pixel area with [aptitud_uni_alto_p2 = valor]
+    let x_coor [pxcor] of pixel
+    let y_coor [pycor] of pixel
+
+    report list item 0 x_coor item 0 y_coor
+  ]
+
+  if tipo_mejor_aptitud = 7 [
+
+    let pixel area with [aptitud_uni_medio_p2 = valor]
+    let x_coor [pxcor] of pixel
+    let y_coor [pycor] of pixel
+
+    report list item 0 x_coor item 0 y_coor
+  ]
+
+  if tipo_mejor_aptitud = 8 [
+
+    let pixel area with [aptitud_multi_alto_p2 = valor]
+    let x_coor [pxcor] of pixel
+    let y_coor [pycor] of pixel
+
+    report list item 0 x_coor item 0 y_coor
+  ]
+
+  if tipo_mejor_aptitud = 9 [
+
+    let pixel area with [aptitud_multi_medio_p2 = valor]
+    let x_coor [pxcor] of pixel
+    let y_coor [pycor] of pixel
+
+    report list item 0 x_coor item 0 y_coor
+  ]
+
+  if tipo_mejor_aptitud = 10 [
+
+    let pixel area with [aptitud_multi_bajo_p2 = valor]
+    let x_coor [pxcor] of pixel
+    let y_coor [pycor] of pixel
+
+    report list item 0 x_coor item 0 y_coor
   ]
 
 end
 
+;-------------------------------------------------------------------------------------------------------------------
 
+;##############################################  CONSTRUCCION  #####################################################
+;; ejecuta el proceso de construccion que debe seguir cada promotora
 
 to construir
-  ask promotoras1[
 
-    move-to one-of patches with [disponible = 1]
-    set area_influencia area_influecia_de_cada_promotora self radio_busqueda
-    seleccion_mejor_pixel
+  ask promotoras1 [
+
+    ifelse intentos < 30 [set intentos (intentos + 1)] [set intentos 0 set reinicios (reinicios + 1)]
+
+    let pixel_ya_construido? [modificado] of patch-here
+
+    if pixel_ya_construido? = 0 [
+
+      if tipologia_a_construir = "unifamiliar_estandar_alto" and demanda_unifamiliar_alto > 0 [
+
+        ask patch-here [set modificado 1]
+        ask patch-here [set disponible 0]
+        ask patch-here [set tipo_viviendas 3]
+        ask patch-here [set estandar 1]
+
+        set demanda_unifamiliar_alto (demanda_unifamiliar_alto - 1)
+        set intentos (intentos - 1)
+        set num_constru_uni_p1 (num_constru_uni_p1 + 1)
+        set num_constru_alto_p1 (num_constru_alto_p1 + 1)
+      ]
+
+     if tipologia_a_construir = "unifamiliar_estandar_medio" and demanda_unifamiliar_medio > 0 [
+
+        ask patch-here [set modificado 1]
+        ask patch-here [set disponible 0]
+        ask patch-here [set tipo_viviendas 3]
+        ask patch-here [set estandar 2]
+
+        set demanda_unifamiliar_medio (demanda_unifamiliar_medio - 1)
+        set intentos (intentos - 1)
+        set num_constru_uni_p1 (num_constru_uni_p1 + 1)
+        set num_constru_medio_p1 (num_constru_medio_p1 + 1)
+      ]
+
+     if tipologia_a_construir = "multifamiliar_estandar_alto" and demanda_multifamiliar_alto > 0 [
+
+        ask patch-here [set modificado 1]
+        ask patch-here [set disponible 0]
+        ask patch-here [set tipo_viviendas 2]
+        ask patch-here [set estandar 1]
+
+        set demanda_multifamiliar_alto (demanda_multifamiliar_alto - 1)
+        set intentos (intentos - 1)
+        set num_constru_multi_p1 (num_constru_multi_p1 + 1)
+        set num_constru_alto_p1 (num_constru_alto_p1 + 1)
+      ]
+
+     if tipologia_a_construir = "multifamiliar_estandar_medio" and demanda_multifamiliar_medio > 0 [
+
+        ask patch-here [set modificado 1]
+        ask patch-here [set disponible 0]
+        ask patch-here [set tipo_viviendas 2]
+        ask patch-here [set estandar 2]
+
+        set demanda_multifamiliar_medio (demanda_multifamiliar_medio - 1)
+        set intentos (intentos - 1)
+        set num_constru_multi_p1 (num_constru_multi_p1 + 1)
+        set num_constru_medio_p1 (num_constru_medio_p1 + 1)
+      ]
+
+     if tipologia_a_construir = "multifamiliar_estandar_bajo" and demanda_multifamiliar_bajo > 0 [
+
+        ask patch-here [set modificado 1]
+        ask patch-here [set disponible 0]
+        ask patch-here [set tipo_viviendas 2]
+        ask patch-here [set estandar 3]
+
+        set demanda_multifamiliar_bajo (demanda_multifamiliar_bajo - 1)
+        set intentos (intentos - 1)
+        set num_constru_multi_p1 (num_constru_multi_p1 + 1)
+        set num_constru_bajo_p1 (num_constru_bajo_p1 + 1)
+      ]
+    ]
   ]
+
+  ask promotoras2 [
+
+    ifelse intentos < 30 [set intentos (intentos + 1)] [set intentos 0 set reinicios (reinicios + 1)]
+
+    let pixel_ya_construido? [modificado] of patch-here
+
+    if pixel_ya_construido? = 0 [
+
+      if tipologia_a_construir = "unifamiliar_estandar_alto" and demanda_unifamiliar_alto > 0 [
+
+        ask patch-here [set modificado 1]
+        ask patch-here [set disponible 0]
+        ask patch-here [set tipo_viviendas 3]
+        ask patch-here [set estandar 1]
+
+        set demanda_unifamiliar_alto (demanda_unifamiliar_alto - 1)
+        set intentos (intentos - 1)
+        set num_constru_uni_p2 (num_constru_uni_p2 + 1)
+        set num_constru_alto_p2 (num_constru_alto_p2 + 1)
+      ]
+
+     if tipologia_a_construir = "unifamiliar_estandar_medio" and demanda_unifamiliar_medio > 0 [
+
+        ask patch-here [set modificado 1]
+        ask patch-here [set disponible 0]
+        ask patch-here [set tipo_viviendas 3]
+        ask patch-here [set estandar 2]
+
+        set demanda_unifamiliar_medio (demanda_unifamiliar_medio - 1)
+        set intentos (intentos - 1)
+        set num_constru_uni_p2 (num_constru_uni_p2 + 1)
+        set num_constru_medio_p2 (num_constru_medio_p2 + 1)
+      ]
+
+     if tipologia_a_construir = "multifamiliar_estandar_alto" and demanda_multifamiliar_alto > 0 [
+
+        ask patch-here [set modificado 1]
+        ask patch-here [set disponible 0]
+        ask patch-here [set tipo_viviendas 2]
+        ask patch-here [set estandar 1]
+
+        set demanda_multifamiliar_alto (demanda_multifamiliar_alto - 1)
+        set intentos (intentos - 1)
+        set num_constru_multi_p2 (num_constru_multi_p2 + 1)
+        set num_constru_alto_p2 (num_constru_alto_p2 + 1)
+      ]
+
+     if tipologia_a_construir = "multifamiliar_estandar_medio" and demanda_multifamiliar_medio > 0 [
+
+        ask patch-here [set modificado 1]
+        ask patch-here [set disponible 0]
+        ask patch-here [set tipo_viviendas 2]
+        ask patch-here [set estandar 2]
+
+        set demanda_multifamiliar_medio (demanda_multifamiliar_medio - 1)
+        set intentos (intentos - 1)
+        set num_constru_multi_p2 (num_constru_multi_p2 + 1)
+        set num_constru_medio_p2 (num_constru_medio_p2 + 1)
+      ]
+
+     if tipologia_a_construir = "multifamiliar_estandar_bajo" and demanda_multifamiliar_bajo > 0 [
+
+        ask patch-here [set modificado 1]
+        ask patch-here [set disponible 0]
+        ask patch-here [set tipo_viviendas 2]
+        ask patch-here [set estandar 3]
+
+        set demanda_multifamiliar_bajo (demanda_multifamiliar_bajo - 1)
+        set intentos (intentos - 1)
+        set num_constru_multi_p2 (num_constru_multi_p2 + 1)
+        set num_constru_bajo_p2 (num_constru_bajo_p2 + 1)
+      ]
+    ]
+  ]
+
 end
 
 
-to-report area_influecia_de_cada_promotora [promotora distancia]
+;-------------------------------------------------------------------------------------------------------------------
 
-  let disponibilidad patches with [disponible = 1]
-  let aqui promotora
-  let area disponibilidad with [distance aqui < distancia]
+;##############################################  REINICIAR INTENTOS  #####################################################
+;; reinicia el numero de intentos para que en la nueva iteracion vuelvan a seguir el proceso de seleccion de 0
 
-  report area
+to actualizar_estado_promotoras
+
+  ask promotoras1 [
+    set intentos 0
+  ]
+
+  ask promotoras2 [
+    set intentos 0
+  ]
 
 end
 
@@ -763,13 +1163,24 @@ end
 ;-------------------------------------------------------------------------------------------------------------------
 
 
-to modelo2
+to ejecutar_modelo
 
-
+  establecer_aptitudes
+  crear_promotoras
 
   while [ticks < Número_de_iteraciones] [
 
-    ;construye_vivienda
+    calcular_demandas
+    actualizar_estado_promotoras
+
+    while [demanda_total > 0] [
+
+      movilizar_promotoras
+      seleccion_mejor_pixel
+      construir
+      actualizar_demandas
+
+    ]
 
     tick
   ]
@@ -875,10 +1286,10 @@ NIL
 1
 
 BUTTON
-1335
-700
-1505
-736
+1336
+696
+1506
+732
 Mostrar edificación inicial
 mostrar_zonas_edificadas
 NIL
@@ -942,39 +1353,22 @@ NIL
 NIL
 1
 
-BUTTON
-1335
-773
-1505
-810
-Mostrar terreno disponible
-terreno_disponible\n
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
 INPUTBOX
 1708
 284
 1843
 350
 Demanda_unifamiliar
-200.0
+100.0
 1
 0
 Number
 
 TEXTBOX
-1338
-950
-1503
-982
+1340
+947
+1505
+979
 MOSTRAR DISTANCIAS A:
 13
 0.0
@@ -1032,12 +1426,12 @@ NIL
 1
 
 BUTTON
-2073
-139
-2243
-174
+1336
+799
+1685
+843
 Mostrar edificación simulada
-mostrar_zonas_simuladas
+mostrar_zonas_simuladas Tipo_visualización_zonas_simuladas
 NIL
 1
 T
@@ -1126,7 +1520,7 @@ HORIZONTAL
 BUTTON
 1504
 150
-1654
+1685
 183
 Ocultar nombre municipios
 ask nombres_municipios [ die ]
@@ -1141,10 +1535,10 @@ NIL
 1
 
 BUTTON
-1335
-736
-1505
-773
+1506
+696
+1687
+732
 Mostrar estandar edificación
 mostrar_viviendas_por_precios
 NIL
@@ -1163,7 +1557,7 @@ BUTTON
 2056
 127
 EJECUTAR MODELO
-modelo2
+ejecutar_modelo\n
 NIL
 1
 T
@@ -1175,26 +1569,26 @@ NIL
 1
 
 MONITOR
-2163
-44
-2277
-89
+2080
+95
+2236
+148
 Terreno disponible
 count patches with [disponible = 1]
 17
 1
-11
+13
 
 MONITOR
-2081
-43
-2153
-88
-Iteración
+2080
+42
+2236
+95
+Iteración actual
 ticks
 17
 1
-11
+13
 
 INPUTBOX
 1710
@@ -1209,9 +1603,9 @@ Number
 
 BUTTON
 1335
-861
+869
 1505
-907
+915
 Clasificación de las viviendas
 mostrar_tipo_viviendas
 NIL
@@ -1236,9 +1630,9 @@ INICIALIZACIÓN DEL MODELO\n\n(¡REQUERIDO ANTES DE EJECUTAR EL MODELO!)
 
 TEXTBOX
 1512
-858
+868
 1662
-906
+916
 VACANTE (verde)\nMULTIFAMILIAR (azul)\nUNIFAMILIAR (naranja)
 13
 0.0
@@ -1326,9 +1720,9 @@ TEXTBOX
 
 TEXTBOX
 1333
-824
+845
 1703
-842
+863
 -------------------------------------------------------------------------
 15
 0.0
@@ -1393,7 +1787,7 @@ Distancia_a_urbano_consolidado
 Distancia_a_urbano_consolidado
 0
 1
-0.3
+0.43
 0.01
 1
 NIL
@@ -1408,7 +1802,7 @@ Distancia_a_carreteras
 Distancia_a_carreteras
 0
 1
-0.15
+0.32
 0.01
 1
 NIL
@@ -1423,7 +1817,7 @@ Distancia_a_transporte_público
 Distancia_a_transporte_público
 0
 1
-0.29
+0.32
 0.01
 1
 NIL
@@ -1438,7 +1832,7 @@ Distancia_a_zonas_de_trabajo
 Distancia_a_zonas_de_trabajo
 0
 1
-0.2
+0.49
 0.01
 1
 NIL
@@ -1453,7 +1847,7 @@ Distancia_a_zonas_verdes
 Distancia_a_zonas_verdes
 0
 1
-0.1
+0.22
 0.01
 1
 NIL
@@ -1465,7 +1859,7 @@ INPUTBOX
 1844
 502
 Demanda_multifamiliar
-100.0
+50.0
 1
 0
 Number
@@ -1577,7 +1971,7 @@ INPUTBOX
 1864
 733
 Número_promotoras_tipo_2
-20.0
+10.0
 1
 0
 Number
@@ -1631,7 +2025,7 @@ Diferenciación
 Diferenciación
 0
 1
-0.5
+0.0
 0.1
 1
 NIL
@@ -1658,10 +2052,10 @@ TEXTBOX
 1
 
 BUTTON
-2073
-176
-2244
-209
+2242
+10
+2413
+43
 NIL
 establecer_aptitudes
 NIL
@@ -1675,10 +2069,10 @@ NIL
 1
 
 BUTTON
-2074
-211
 2242
-244
+50
+2410
+83
 NIL
 crear_promotoras
 NIL
@@ -1692,13 +2086,13 @@ NIL
 1
 
 BUTTON
-2074
-245
-2243
-278
+2385
+171
+2555
+204
 NIL
 construir
-T
+NIL
 1
 T
 OBSERVER
@@ -1706,6 +2100,297 @@ NIL
 NIL
 NIL
 NIL
+1
+
+CHOOSER
+1336
+742
+1686
+787
+Tipo_visualización_zonas_simuladas
+Tipo_visualización_zonas_simuladas
+"TIPOLOGIA" "ESTANDAR" "TIPOLOGIA_Y_ESTANDAR"
+2
+
+BUTTON
+2244
+89
+2414
+122
+NIL
+movilizar_promotoras\n
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+2384
+130
+2535
+163
+NIL
+seleccion_mejor_pixel\n
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+2242
+131
+2378
+164
+NIL
+calcular_demandas\n
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+2245
+172
+2381
+205
+NIL
+repartir_demandas
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+TEXTBOX
+1516
+981
+1683
+1157
+El formato de los datos está reflejado en forma de aptitudes, es decir, los valores de distancia están invertidos y además normalizados a escala 0 - 10000.\n\nMás claro = mayor aptitud\nMás oscuro = menor aptitud
+13
+0.0
+1
+
+MONITOR
+2080
+148
+2236
+201
+Edificaciones construidas
+count patches with [modificado = 1]
+17
+1
+13
+
+MONITOR
+2082
+261
+2243
+306
+Unifamiliares_promotoras_2
+num_constru_uni_p2
+17
+1
+11
+
+MONITOR
+2082
+306
+2243
+351
+Multifamiliares_promotoras_2
+num_constru_multi_p2
+17
+1
+11
+
+MONITOR
+2082
+382
+2243
+427
+Estándar_alto_promotoras_2
+num_constru_alto_p2
+17
+1
+11
+
+MONITOR
+2082
+426
+2243
+471
+Estándar_medio_promotoras_2
+num_constru_medio_p2
+17
+1
+11
+
+MONITOR
+2082
+471
+2243
+516
+Estándar_bajo_promotoras_2
+num_constru_bajo_p2
+17
+1
+11
+
+MONITOR
+2315
+260
+2479
+305
+Unifamiliares_promotoras_1
+num_constru_uni_p1
+17
+1
+11
+
+MONITOR
+2315
+305
+2480
+350
+Multifamiliares_promotoras_1
+num_constru_multi_p1
+17
+1
+11
+
+MONITOR
+2317
+380
+2480
+425
+Estándar_alto_promotoras_1
+num_constru_alto_p1
+17
+1
+11
+
+MONITOR
+2317
+425
+2480
+470
+Estándar_medio_promotoras_1
+num_constru_medio_p1
+17
+1
+11
+
+MONITOR
+2317
+469
+2480
+514
+Estándar_bajo_promotoras_1
+num_constru_bajo_p1
+17
+1
+11
+
+TEXTBOX
+2064
+213
+2510
+231
+----------------------------------------------------------------------------------------
+15
+0.0
+1
+
+TEXTBOX
+2066
+630
+2507
+648
+----------------------------------------------------------------------------------------
+15
+0.0
+1
+
+TEXTBOX
+2278
+260
+2293
+640
+:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n
+15
+0.0
+1
+
+TEXTBOX
+2065
+358
+2517
+376
+·······················································································
+15
+0.0
+1
+
+TEXTBOX
+2081
+236
+2387
+256
+Edificaciones realizadas por cada tipo de promotora:
+13
+0.0
+1
+
+MONITOR
+2314
+557
+2478
+618
+Total_promotoras_1
+num_constru_uni_p1 + num_constru_multi_p1 + num_constru_alto_p1 + num_constru_medio_p1 + num_constru_bajo_p1
+17
+1
+15
+
+MONITOR
+2084
+559
+2245
+620
+Total_promotoras_2
+num_constru_uni_p2 + num_constru_multi_p2 + num_constru_alto_p2 + num_constru_medio_p2 + num_constru_bajo_p2
+17
+1
+15
+
+TEXTBOX
+2069
+529
+2502
+547
+·························································································
+15
+0.0
 1
 
 @#$#@#$#@
