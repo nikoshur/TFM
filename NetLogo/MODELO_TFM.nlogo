@@ -99,6 +99,9 @@ globals [
   num_constru_alto_p2
   num_constru_medio_p2
   num_constru_bajo_p2
+
+  ganancias_p1
+  ganancias_p2
 ]
 
 ;----------------------------------------------------------------------------------------------------------------
@@ -149,7 +152,10 @@ promotoras1-own [
   mejor_aptitud
   tipologia_a_construir
   intentos
+  adaptacion
   reinicios
+  satisfaccion
+  ganancias
 ]
 
 promotoras2-own [
@@ -159,7 +165,10 @@ promotoras2-own [
   mejor_aptitud
   tipologia_a_construir
   intentos
+  adaptacion
   reinicios
+  satisfaccion
+  ganancias
 ]
 
 ;------------------------------------------------------------------------------------------------------------------
@@ -448,6 +457,58 @@ to mostrar_zonas_simuladas [tipo_visualizacion]
 
 end
 
+
+;-------------------------------------------------------------------------------------------------------------------
+;###############################  GENERACIÓN DE GRÁFICOS DE SEGUIMIENTO  ###########################################
+;-------------------------------------------------------------------------------------------------------------------
+
+to setup-plot1
+
+  clear-all-plots
+  set-current-plot "Edificaciones por municipio"
+  set-plot-pen-interval 1
+  set-plot-pen-mode 1
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
+to setup-plot2
+
+  clear-all-plots
+  set-current-plot "Nuevas edificaciones"
+  set-plot-pen-interval 1
+  set-plot-pen-mode 1
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------
+
+to do-plot1
+
+  set-current-plot "Edificaciones por municipio"
+  histogram [area_estudio] of patches with [(area_estudio > 0) and (tipo_viviendas > 1)]
+  set-current-plot-pen "Edificacion"
+  plot sum [modificado] of patches with [(area_estudio > 0) and (tipo_viviendas > 1)]
+
+end
+
+;-------------------------------------------------------------------------------------------------------------------
+
+to do-plot2
+
+  set-current-plot "Nuevas edificaciones"
+
+  set-current-plot-pen "Alto"
+  plot count patches with [(modificado = 1) and (estandar = 1)]
+  set-current-plot-pen "Medio"
+  plot count patches with [(modificado = 1) and (estandar = 2)]
+  set-current-plot-pen "Bajo"
+  plot count patches with [(modificado = 1) and (estandar = 3)]
+
+end
+
 ;-------------------------------------------------------------------------------------------------------------------
 ;-------------------------------------------------------------------------------------------------------------------
 ;-------------------------------------------------------------------------------------------------------------------
@@ -493,21 +554,6 @@ to actualizar_demandas
 
   set demanda_total (demanda_multifamiliar_alto + demanda_multifamiliar_medio + demanda_multifamiliar_bajo +
                      demanda_unifamiliar_alto + demanda_unifamiliar_medio)
-end
-
-;-------------------------------------------------------------------------------------------------------------------
-
-;#################################  REPARTO DE DEMANDA ENTRE LAS PROMOTORAS  #######################################
-;; realiza el reparto de la demanda entre el total de promotoras
-
-to repartir_demandas
-
-  let demanda_total_promotoras1 (demanda_total * (Número_promotoras_tipo_1 / (Número_promotoras_tipo_1 + Número_promotoras_tipo_2)))
-  let demanda_cada_promotora1 (demanda_total_promotoras1 / Número_promotoras_tipo_1)
-
-  let demanda_total_promotoras2 (demanda_total * (Número_promotoras_tipo_2 / (Número_promotoras_tipo_1 + Número_promotoras_tipo_2)))
-  let demanda_cada_promotora2 (demanda_total_promotoras2 / Número_promotoras_tipo_2)
-
 end
 
 ;-------------------------------------------------------------------------------------------------------------------
@@ -569,9 +615,9 @@ to establecer_ponderaciones
 
   ;·················································································································
 
-  let tot6 ((2 ^ ajuste_p2) + (4 ^ ajuste_p2) + (0.5 ^ ajuste_p2) + (2 ^ ajuste_p2) + (3 ^ ajuste_p2))
+  let tot6 ((2 ^ ajuste_p2) + (2.5 ^ ajuste_p2) + (0.5 ^ ajuste_p2) + (2 ^ ajuste_p2) + (3 ^ ajuste_p2))
   set preferencia_urb_conso_alto_multi_p2  (importancia_u_c * ((1 ^ ajuste_p2) / tot6))
-  set preferencia_carretera_alto_multi_p2  (importancia_ca  * ((4 ^ ajuste_p2) / tot6))
+  set preferencia_carretera_alto_multi_p2  (importancia_ca  * ((2.5 ^ ajuste_p2) / tot6))
   set preferencia_trans_pub_alto_multi_p2  (importancia_tp  * ((0.5 ^ ajuste_p2) / tot6))
   set preferencia_zonas_tr_alto_multi_p2   (importancia_zt  * ((2 ^ ajuste_p2) / tot6))
   set preferencia_zonas_ver_alto_multi_p2  (importancia_zv  * ((3 ^ ajuste_p2) / tot6))
@@ -667,6 +713,7 @@ end
 
 ;######################################  CREACION DE LOS PROMOTORES  ###############################################
 ;; crea los dos tipos de agentes de promotoras
+
 to crear_promotoras
 
   ask promotoras1 [die]
@@ -679,7 +726,9 @@ to crear_promotoras
     set color violet
     set size radio_busqueda
     set intentos 0
+    set adaptacion precision ((10 + (10 * Diferenciación)) / 5) 0
     set reinicios 0
+
   ]
 
   ask promotoras2 [die]
@@ -692,7 +741,9 @@ to crear_promotoras
     set color red
     set size radio_busqueda
     set intentos 0
+    set adaptacion precision ((10 + (20 * Diferenciación)) / 5) 0
     set reinicios 0
+
   ]
 
 end
@@ -749,24 +800,29 @@ to seleccion_mejor_pixel
 
     let orden_mejores sort (list mejor_aptitud_mu_a mejor_aptitud_mu_m mejor_aptitud_mu_b mejor_aptitud_un_a mejor_aptitud_un_m)
 
-    if intentos <= 5 [
-      set mejor_aptitud item 0 orden_mejores
-    ]
-
-    if intentos > 5 and intentos <= 10[
-      set mejor_aptitud item 1 orden_mejores
-    ]
-
-    if intentos > 10 and intentos <= 13[
-      set mejor_aptitud item 2 orden_mejores
-    ]
-
-    if intentos > 13 and intentos <= 15[
-      set mejor_aptitud item 3 orden_mejores
-    ]
-
-    if intentos > 15 and intentos <= 17[
+    if intentos <= adaptacion [
       set mejor_aptitud item 4 orden_mejores
+      set satisfaccion 5
+    ]
+
+    if intentos > adaptacion and intentos <= (adaptacion * 2) [
+      set mejor_aptitud item 3 orden_mejores
+      set satisfaccion 4
+    ]
+
+    if intentos > (adaptacion * 2) and intentos <= (adaptacion * 3) [
+      set mejor_aptitud item 2 orden_mejores
+      set satisfaccion 3
+    ]
+
+    if intentos > (adaptacion * 3) and intentos <= (adaptacion * 4) [
+      set mejor_aptitud item 1 orden_mejores
+      set satisfaccion 2
+    ]
+
+    if intentos > (adaptacion * 4) and intentos <= (adaptacion * 5) [
+      set mejor_aptitud item 0 orden_mejores
+      set satisfaccion 1
     ]
 
     if mejor_aptitud = mejor_aptitud_un_a [
@@ -815,24 +871,29 @@ to seleccion_mejor_pixel
 
     let orden_mejores sort (list mejor_aptitud_mu_a mejor_aptitud_mu_m mejor_aptitud_mu_b mejor_aptitud_un_a mejor_aptitud_un_m)
 
-    if intentos <= 3 [
-      set mejor_aptitud item 0 orden_mejores
-    ]
-
-    if intentos > 3 and intentos <= 6[
-      set mejor_aptitud item 1 orden_mejores
-    ]
-
-    if intentos > 6 and intentos <= 9[
-      set mejor_aptitud item 2 orden_mejores
-    ]
-
-    if intentos > 9 and intentos <= 15[
-      set mejor_aptitud item 3 orden_mejores
-    ]
-
-    if intentos > 15 and intentos <= 25[
+    if intentos <= adaptacion [
       set mejor_aptitud item 4 orden_mejores
+      set satisfaccion 5
+    ]
+
+    if intentos > adaptacion and intentos <= (adaptacion * 2) [
+      set mejor_aptitud item 3 orden_mejores
+      set satisfaccion 4
+    ]
+
+    if intentos > (adaptacion * 2) and intentos <= (adaptacion * 3) [
+      set mejor_aptitud item 2 orden_mejores
+      set satisfaccion 3
+    ]
+
+    if intentos > (adaptacion * 3) and intentos <= (adaptacion * 4) [
+      set mejor_aptitud item 1 orden_mejores
+      set satisfaccion 2
+    ]
+
+    if intentos > (adaptacion * 4) and intentos <= (adaptacion * 5) [
+      set mejor_aptitud item 0 orden_mejores
+      set satisfaccion 1
     ]
 
     if mejor_aptitud = mejor_aptitud_un_a [
@@ -981,9 +1042,10 @@ to construir
 
   ask promotoras1 [
 
-    ifelse intentos < 30 [set intentos (intentos + 1)] [set intentos 0 set reinicios (reinicios + 1)]
+    ifelse intentos < (adaptacion * 6) [set intentos (intentos + 1)] [set intentos 0 set reinicios (reinicios + 1)]
 
     let pixel_ya_construido? [modificado] of patch-here
+    let precio_pixel [precio_viviendas] of patch-here
 
     if pixel_ya_construido? = 0 [
 
@@ -998,6 +1060,8 @@ to construir
         set intentos (intentos - 1)
         set num_constru_uni_p1 (num_constru_uni_p1 + 1)
         set num_constru_alto_p1 (num_constru_alto_p1 + 1)
+        set ganancias (ganancias + (satisfaccion - precio_pixel + 2))
+        set ganancias_p1 (ganancias_p1 + ganancias)
       ]
 
      if tipologia_a_construir = "unifamiliar_estandar_medio" and demanda_unifamiliar_medio > 0 [
@@ -1011,6 +1075,8 @@ to construir
         set intentos (intentos - 1)
         set num_constru_uni_p1 (num_constru_uni_p1 + 1)
         set num_constru_medio_p1 (num_constru_medio_p1 + 1)
+        set ganancias (ganancias + (satisfaccion - precio_pixel + 2))
+        set ganancias_p1 (ganancias_p1 + ganancias)
       ]
 
      if tipologia_a_construir = "multifamiliar_estandar_alto" and demanda_multifamiliar_alto > 0 [
@@ -1024,6 +1090,8 @@ to construir
         set intentos (intentos - 1)
         set num_constru_multi_p1 (num_constru_multi_p1 + 1)
         set num_constru_alto_p1 (num_constru_alto_p1 + 1)
+        set ganancias (ganancias + (satisfaccion - precio_pixel + 2))
+        set ganancias_p1 (ganancias_p1 + ganancias)
       ]
 
      if tipologia_a_construir = "multifamiliar_estandar_medio" and demanda_multifamiliar_medio > 0 [
@@ -1037,6 +1105,8 @@ to construir
         set intentos (intentos - 1)
         set num_constru_multi_p1 (num_constru_multi_p1 + 1)
         set num_constru_medio_p1 (num_constru_medio_p1 + 1)
+        set ganancias (ganancias + (satisfaccion - precio_pixel + 2))
+        set ganancias_p1 (ganancias_p1 + ganancias)
       ]
 
      if tipologia_a_construir = "multifamiliar_estandar_bajo" and demanda_multifamiliar_bajo > 0 [
@@ -1050,15 +1120,18 @@ to construir
         set intentos (intentos - 1)
         set num_constru_multi_p1 (num_constru_multi_p1 + 1)
         set num_constru_bajo_p1 (num_constru_bajo_p1 + 1)
+        set ganancias (ganancias + (satisfaccion - precio_pixel + 2))
+        set ganancias_p1 (ganancias_p1 + ganancias)
       ]
     ]
   ]
 
   ask promotoras2 [
 
-    ifelse intentos < 30 [set intentos (intentos + 1)] [set intentos 0 set reinicios (reinicios + 1)]
+    ifelse intentos < (adaptacion * 6) [set intentos (intentos + 1)] [set intentos 0 set reinicios (reinicios + 1)]
 
     let pixel_ya_construido? [modificado] of patch-here
+    let precio_pixel [precio_viviendas] of patch-here
 
     if pixel_ya_construido? = 0 [
 
@@ -1073,6 +1146,8 @@ to construir
         set intentos (intentos - 1)
         set num_constru_uni_p2 (num_constru_uni_p2 + 1)
         set num_constru_alto_p2 (num_constru_alto_p2 + 1)
+        set ganancias (ganancias + (satisfaccion - precio_pixel + 2))
+        set ganancias_p2 (ganancias_p2 + ganancias)
       ]
 
      if tipologia_a_construir = "unifamiliar_estandar_medio" and demanda_unifamiliar_medio > 0 [
@@ -1086,6 +1161,8 @@ to construir
         set intentos (intentos - 1)
         set num_constru_uni_p2 (num_constru_uni_p2 + 1)
         set num_constru_medio_p2 (num_constru_medio_p2 + 1)
+        set ganancias (ganancias + (satisfaccion - precio_pixel + 2))
+        set ganancias_p2 (ganancias_p2 + ganancias)
       ]
 
      if tipologia_a_construir = "multifamiliar_estandar_alto" and demanda_multifamiliar_alto > 0 [
@@ -1099,6 +1176,8 @@ to construir
         set intentos (intentos - 1)
         set num_constru_multi_p2 (num_constru_multi_p2 + 1)
         set num_constru_alto_p2 (num_constru_alto_p2 + 1)
+        set ganancias (ganancias + (satisfaccion - precio_pixel + 2))
+        set ganancias_p2 (ganancias_p2 + ganancias)
       ]
 
      if tipologia_a_construir = "multifamiliar_estandar_medio" and demanda_multifamiliar_medio > 0 [
@@ -1112,6 +1191,8 @@ to construir
         set intentos (intentos - 1)
         set num_constru_multi_p2 (num_constru_multi_p2 + 1)
         set num_constru_medio_p2 (num_constru_medio_p2 + 1)
+        set ganancias (ganancias + (satisfaccion - precio_pixel + 2))
+        set ganancias_p2 (ganancias_p2 + ganancias)
       ]
 
      if tipologia_a_construir = "multifamiliar_estandar_bajo" and demanda_multifamiliar_bajo > 0 [
@@ -1125,6 +1206,8 @@ to construir
         set intentos (intentos - 1)
         set num_constru_multi_p2 (num_constru_multi_p2 + 1)
         set num_constru_bajo_p2 (num_constru_bajo_p2 + 1)
+        set ganancias (ganancias + (satisfaccion - precio_pixel + 2))
+        set ganancias_p2 (ganancias_p2 + ganancias)
       ]
     ]
   ]
@@ -1168,6 +1251,9 @@ to ejecutar_modelo
   establecer_aptitudes
   crear_promotoras
 
+  setup-plot1
+  setup-plot2
+
   while [ticks < Número_de_iteraciones] [
 
     calcular_demandas
@@ -1179,6 +1265,8 @@ to ejecutar_modelo
       seleccion_mejor_pixel
       construir
       actualizar_demandas
+      do-plot1
+      do-plot2
 
     ]
 
@@ -1426,9 +1514,9 @@ NIL
 1
 
 BUTTON
-1336
+1335
 799
-1685
+1688
 843
 Mostrar edificación simulada
 mostrar_zonas_simuladas Tipo_visualización_zonas_simuladas
@@ -1569,10 +1657,10 @@ NIL
 1
 
 MONITOR
-2080
-95
-2236
-148
+2199
+45
+2324
+98
 Terreno disponible
 count patches with [disponible = 1]
 17
@@ -1580,10 +1668,10 @@ count patches with [disponible = 1]
 13
 
 MONITOR
-2080
-42
-2236
-95
+2084
+45
+2195
+98
 Iteración actual
 ticks
 17
@@ -1740,9 +1828,9 @@ TEXTBOX
 
 TEXTBOX
 1333
-1160
+1158
 2513
-1188
+1186
 ___________________________________________________________________________________________________________________________________________________________________________________________________
 11
 0.0
@@ -1752,18 +1840,18 @@ TEXTBOX
 2502
 12
 2517
-1174
+1171
 |\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
 11
 0.0
 1
 
 TEXTBOX
-1717
+1720
 910
-2046
+2049
 966
-IMPORTANCIA DE LOS FACTORES (pesos que los distintos tipos de promotores deben tener en cuenta para la selección de zonas)
+IMPORTANCIA DE LOS FACTORES (pesos que los distintos tipos de promotores deben tener en cuenta para la selección de zonas en las que quieren construir)
 13
 0.0
 1
@@ -1787,7 +1875,7 @@ Distancia_a_urbano_consolidado
 Distancia_a_urbano_consolidado
 0
 1
-0.43
+0.3
 0.01
 1
 NIL
@@ -1802,7 +1890,7 @@ Distancia_a_carreteras
 Distancia_a_carreteras
 0
 1
-0.32
+0.15
 0.01
 1
 NIL
@@ -1817,7 +1905,7 @@ Distancia_a_transporte_público
 Distancia_a_transporte_público
 0
 1
-0.32
+0.25
 0.01
 1
 NIL
@@ -1832,7 +1920,7 @@ Distancia_a_zonas_de_trabajo
 Distancia_a_zonas_de_trabajo
 0
 1
-0.49
+0.25
 0.01
 1
 NIL
@@ -1847,7 +1935,7 @@ Distancia_a_zonas_verdes
 Distancia_a_zonas_verdes
 0
 1
-0.22
+0.05
 0.01
 1
 NIL
@@ -2017,15 +2105,15 @@ Grado de diferenciación entre cada tipo de promotora: 0 = ninguno, 1 = máximo
 1
 
 SLIDER
-1711
-819
-2053
-852
+1714
+824
+2048
+857
 Diferenciación
 Diferenciación
 0
 1
-0.0
+0.5
 0.1
 1
 NIL
@@ -2052,10 +2140,10 @@ TEXTBOX
 1
 
 BUTTON
-2242
-10
-2413
-43
+2524
+51
+2691
+84
 NIL
 establecer_aptitudes
 NIL
@@ -2069,10 +2157,10 @@ NIL
 1
 
 BUTTON
-2242
-50
-2410
-83
+2524
+84
+2691
+117
 NIL
 crear_promotoras
 NIL
@@ -2086,10 +2174,10 @@ NIL
 1
 
 BUTTON
-2385
-171
-2555
-204
+2524
+216
+2691
+249
 NIL
 construir
 NIL
@@ -2105,7 +2193,7 @@ NIL
 CHOOSER
 1336
 742
-1686
+1687
 787
 Tipo_visualización_zonas_simuladas
 Tipo_visualización_zonas_simuladas
@@ -2113,10 +2201,10 @@ Tipo_visualización_zonas_simuladas
 2
 
 BUTTON
-2244
-89
-2414
-122
+2524
+117
+2691
+150
 NIL
 movilizar_promotoras\n
 NIL
@@ -2130,10 +2218,10 @@ NIL
 1
 
 BUTTON
-2384
-130
-2535
-163
+2524
+183
+2691
+216
 NIL
 seleccion_mejor_pixel\n
 NIL
@@ -2147,29 +2235,12 @@ NIL
 1
 
 BUTTON
-2242
-131
-2378
-164
+2524
+150
+2691
+183
 NIL
 calcular_demandas\n
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-2245
-172
-2381
-205
-NIL
-repartir_demandas
 NIL
 1
 T
@@ -2191,10 +2262,10 @@ El formato de los datos está reflejado en forma de aptitudes, es decir, los val
 1
 
 MONITOR
-2080
-148
-2236
-201
+2328
+45
+2484
+98
 Edificaciones construidas
 count patches with [modificado = 1]
 17
@@ -2202,196 +2273,276 @@ count patches with [modificado = 1]
 13
 
 MONITOR
-2082
-261
-2243
-306
+2083
+154
+2267
+203
 Unifamiliares_promotoras_2
 num_constru_uni_p2
 17
 1
-11
+12
 
 MONITOR
-2082
-306
-2243
-351
+2083
+203
+2267
+252
 Multifamiliares_promotoras_2
 num_constru_multi_p2
 17
 1
-11
+12
 
 MONITOR
-2082
-382
-2243
-427
+2083
+275
+2268
+324
 Estándar_alto_promotoras_2
 num_constru_alto_p2
 17
 1
-11
+12
 
 MONITOR
-2082
-426
-2243
-471
+2083
+324
+2268
+373
 Estándar_medio_promotoras_2
 num_constru_medio_p2
 17
 1
-11
+12
 
 MONITOR
-2082
-471
-2243
-516
+2083
+373
+2268
+422
 Estándar_bajo_promotoras_2
 num_constru_bajo_p2
 17
 1
-11
+12
 
 MONITOR
-2315
-260
-2479
-305
+2290
+154
+2484
+203
 Unifamiliares_promotoras_1
 num_constru_uni_p1
 17
 1
-11
+12
 
 MONITOR
-2315
-305
-2480
-350
+2290
+203
+2484
+252
 Multifamiliares_promotoras_1
 num_constru_multi_p1
 17
 1
-11
+12
 
 MONITOR
-2317
-380
-2480
-425
+2290
+275
+2484
+324
 Estándar_alto_promotoras_1
 num_constru_alto_p1
 17
 1
-11
+12
 
 MONITOR
-2317
-425
-2480
-470
+2290
+324
+2484
+373
 Estándar_medio_promotoras_1
 num_constru_medio_p1
 17
 1
-11
+12
 
 MONITOR
-2317
-469
-2480
-514
+2290
+373
+2484
+422
 Estándar_bajo_promotoras_1
 num_constru_bajo_p1
 17
 1
-11
+12
 
 TEXTBOX
-2064
-213
-2510
-231
+2065
+106
+2511
+124
 ----------------------------------------------------------------------------------------
-15
-0.0
-1
-
-TEXTBOX
-2066
-630
-2507
-648
-----------------------------------------------------------------------------------------
-15
-0.0
-1
-
-TEXTBOX
-2278
-260
-2293
-640
-:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n
 15
 0.0
 1
 
 TEXTBOX
 2065
-358
-2517
-376
+638
+2506
+656
+----------------------------------------------------------------------------------------
+15
+0.0
+1
+
+TEXTBOX
+2277
+143
+2292
+649
+:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:
+15
+0.0
+1
+
+TEXTBOX
+2068
+257
+2520
+275
 ·······················································································
 15
 0.0
 1
 
 TEXTBOX
-2081
-236
-2387
-256
+2085
+127
+2391
+147
 Edificaciones realizadas por cada tipo de promotora:
 13
 0.0
 1
 
 MONITOR
-2314
-557
-2478
-618
-Total_promotoras_1
-num_constru_uni_p1 + num_constru_multi_p1 + num_constru_alto_p1 + num_constru_medio_p1 + num_constru_bajo_p1
+2291
+454
+2485
+523
+Total promotoras 1
+num_constru_uni_p1 + num_constru_multi_p1
 17
 1
-15
+17
 
 MONITOR
-2084
-559
-2245
-620
-Total_promotoras_2
-num_constru_uni_p2 + num_constru_multi_p2 + num_constru_alto_p2 + num_constru_medio_p2 + num_constru_bajo_p2
+2083
+455
+2268
+524
+Total promotoras 2
+num_constru_uni_p2 + num_constru_multi_p2
 17
 1
-15
+17
 
 TEXTBOX
-2069
-529
-2502
-547
-·························································································
+2065
+430
+2507
+448
+····························································································
 15
 0.0
 1
+
+TEXTBOX
+2527
+21
+2734
+53
+Ejecución por puntos de control
+13
+0.0
+1
+
+MONITOR
+2083
+562
+2268
+631
+Ganancias promotora 2
+ganancias_p2 / Número_promotoras_tipo_2
+17
+1
+17
+
+MONITOR
+2291
+560
+2485
+629
+Ganancias promotora 1
+ganancias_p1 / Número_promotoras_tipo_1
+17
+1
+17
+
+TEXTBOX
+2064
+534
+2509
+552
+····························································································
+15
+0.0
+1
+
+PLOT
+2082
+667
+2484
+899
+Nuevas edificaciones
+Tiempo
+Estandar
+0.0
+5.0
+0.0
+200.0
+true
+true
+"" ""
+PENS
+"Alto" 1.0 0 -13791810 true "" ""
+"Medio" 1.0 0 -817084 true "" ""
+"Bajo" 1.0 0 -6459832 true "" ""
+
+PLOT
+2083
+920
+2485
+1145
+Edificaciones por municipio
+Municipio
+Cantidad
+0.0
+18.0
+0.0
+200.0
+false
+false
+"" ""
+PENS
+"Edificacion" 1.0 1 -16777216 true "" ""
 
 @#$#@#$#@
 ## WHAT IS IT?
