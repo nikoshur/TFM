@@ -462,44 +462,20 @@ end
 ;###############################  GENERACIÓN DE GRÁFICOS DE SEGUIMIENTO  ###########################################
 ;-------------------------------------------------------------------------------------------------------------------
 
-to setup-plot1
-
-  clear-all-plots
-  set-current-plot "Edificaciones por municipio"
-  set-plot-pen-interval 1
-  set-plot-pen-mode 1
-
-end
-
-;-------------------------------------------------------------------------------------------------------------------
-
-to setup-plot2
-
-  clear-all-plots
-  set-current-plot "Nuevas edificaciones"
-  set-plot-pen-interval 1
-  set-plot-pen-mode 1
-
-end
-
-;-------------------------------------------------------------------------------------------------------------------
-;-------------------------------------------------------------------------------------------------------------------
-
 to do-plot1
+  ;; plot de histograma con cantidad de edificado en cada municipio
 
   set-current-plot "Edificaciones por municipio"
-  histogram [area_estudio] of patches with [(area_estudio > 0) and (tipo_viviendas > 1)]
-  set-current-plot-pen "Edificacion"
-  plot sum [modificado] of patches with [(area_estudio > 0) and (tipo_viviendas > 1)]
+  histogram [area_estudio] of patches with [(modificado = 1)]
 
 end
 
 ;-------------------------------------------------------------------------------------------------------------------
 
 to do-plot2
+  ;; plot de la cantidad que se va edificando de cada tipo de estandar
 
   set-current-plot "Nuevas edificaciones"
-
   set-current-plot-pen "Alto"
   plot count patches with [(modificado = 1) and (estandar = 1)]
   set-current-plot-pen "Medio"
@@ -728,7 +704,6 @@ to crear_promotoras
     set intentos 0
     set adaptacion precision ((10 + (10 * Diferenciación)) / 5) 0
     set reinicios 0
-
   ]
 
   ask promotoras2 [die]
@@ -743,7 +718,6 @@ to crear_promotoras
     set intentos 0
     set adaptacion precision ((10 + (20 * Diferenciación)) / 5) 0
     set reinicios 0
-
   ]
 
 end
@@ -1218,7 +1192,7 @@ end
 ;-------------------------------------------------------------------------------------------------------------------
 
 ;##############################################  REINICIAR INTENTOS  #####################################################
-;; reinicia el numero de intentos para que en la nueva iteracion vuelvan a seguir el proceso de seleccion de 0
+;; reinicia el numero de intentos para que en la nueva iteracion vuelvan a seguir el proceso de seleccion desde 0
 
 to actualizar_estado_promotoras
 
@@ -1250,9 +1224,6 @@ to ejecutar_modelo
 
   establecer_aptitudes
   crear_promotoras
-
-  setup-plot1
-  setup-plot2
 
   while [ticks < Número_de_iteraciones] [
 
@@ -1340,9 +1311,9 @@ NIL
 1
 
 BUTTON
-1333
+1337
 506
-1503
+1507
 539
 Mostrar la zonificación legal
 mostrar_zonificacion
@@ -1357,9 +1328,9 @@ NIL
 1
 
 BUTTON
-1334
+1337
 614
-1504
+1507
 660
 Mostrar zonificación por precios
 mostrar_estandar_zona
@@ -1447,7 +1418,7 @@ INPUTBOX
 1843
 350
 Demanda_unifamiliar
-100.0
+300.0
 1
 0
 Number
@@ -1497,9 +1468,9 @@ NIL
 1
 
 BUTTON
-1333
+1337
 539
-1503
+1507
 572
 Mostrar zonas urbanizables
 mostrar_zonas_urbanizables
@@ -1541,20 +1512,20 @@ MUNICIPIOS:\n\n01) Ajalvir\n02) Alcala  de Henares\n03) Anchuelo\n04) Camarma de
 1
 
 TEXTBOX
-1508
-502
-1695
-582
+1512
+507
+1699
+587
 URBANO (azul)\nURBANIZABLE (verde)\nNO URBANIZABLE (gris oscuro)\nSIST.GENERALES (naranja)
 13
 0.0
 1
 
 TEXTBOX
-1510
-613
-1612
-666
+1513
+612
+1615
+665
 CARA (naranja)\nMEDIA (amarillo)\nBARATA (verde)
 13
 0.0
@@ -1569,7 +1540,7 @@ Proporcion_multifamiliar_alto
 Proporcion_multifamiliar_alto
 0
 100 - Proporcion_multifamiliar_medio - Proporcion_multifamiliar_bajo
-25.0
+15.0
 1
 1
 NIL
@@ -1599,7 +1570,7 @@ Proporcion_multifamiliar_bajo
 Proporcion_multifamiliar_bajo
 0
 100 - Proporcion_multifamiliar_medio - Proporcion_multifamiliar_alto
-25.0
+35.0
 1
 1
 NIL
@@ -1875,7 +1846,7 @@ Distancia_a_urbano_consolidado
 Distancia_a_urbano_consolidado
 0
 1
-0.3
+0.4
 0.01
 1
 NIL
@@ -1890,7 +1861,7 @@ Distancia_a_carreteras
 Distancia_a_carreteras
 0
 1
-0.15
+0.3
 0.01
 1
 NIL
@@ -1905,7 +1876,7 @@ Distancia_a_transporte_público
 Distancia_a_transporte_público
 0
 1
-0.25
+0.3
 0.01
 1
 NIL
@@ -1935,7 +1906,7 @@ Distancia_a_zonas_verdes
 Distancia_a_zonas_verdes
 0
 1
-0.05
+0.1
 0.01
 1
 NIL
@@ -1947,7 +1918,7 @@ INPUTBOX
 1844
 502
 Demanda_multifamiliar
-50.0
+150.0
 1
 0
 Number
@@ -1955,9 +1926,9 @@ Number
 TEXTBOX
 1710
 260
-1960
-280
-Demanda de viviendas de tipo unifamiliar:
+2018
+292
+Demanda de edificacaiones de tipo unifamiliar:
 13
 0.0
 1
@@ -1965,9 +1936,9 @@ Demanda de viviendas de tipo unifamiliar:
 TEXTBOX
 1711
 380
-1964
-399
-Demanda de viviendas de tipo multifamiliar:\n
+2032
+412
+Demanda de edificaciones de tipo multifamiliar:\n
 13
 0.0
 1
@@ -2059,7 +2030,7 @@ INPUTBOX
 1864
 733
 Número_promotoras_tipo_2
-10.0
+20.0
 1
 0
 Number
@@ -2075,10 +2046,10 @@ Promotoras tipo 1: generalistas, proyectos de todo tipo
 1
 
 TEXTBOX
-1880
-674
-2052
-738
+1879
+678
+2046
+732
 Promotoras tipo 2: especializadas, enfocadas en proyectos concretos
 13
 0.0
@@ -2140,10 +2111,10 @@ TEXTBOX
 1
 
 BUTTON
-2524
-51
-2691
-84
+1336
+1205
+1503
+1238
 NIL
 establecer_aptitudes
 NIL
@@ -2157,10 +2128,10 @@ NIL
 1
 
 BUTTON
-2524
-84
-2691
-117
+1336
+1238
+1503
+1271
 NIL
 crear_promotoras
 NIL
@@ -2174,10 +2145,10 @@ NIL
 1
 
 BUTTON
-2524
-216
-2691
-249
+1336
+1370
+1503
+1403
 NIL
 construir
 NIL
@@ -2198,13 +2169,13 @@ CHOOSER
 Tipo_visualización_zonas_simuladas
 Tipo_visualización_zonas_simuladas
 "TIPOLOGIA" "ESTANDAR" "TIPOLOGIA_Y_ESTANDAR"
-2
+1
 
 BUTTON
-2524
-117
-2691
-150
+1336
+1271
+1503
+1304
 NIL
 movilizar_promotoras\n
 NIL
@@ -2218,10 +2189,10 @@ NIL
 1
 
 BUTTON
-2524
-183
-2691
-216
+1336
+1337
+1503
+1370
 NIL
 seleccion_mejor_pixel\n
 NIL
@@ -2235,10 +2206,10 @@ NIL
 1
 
 BUTTON
-2524
-150
-2691
-183
+1336
+1304
+1503
+1337
 NIL
 calcular_demandas\n
 NIL
@@ -2465,10 +2436,10 @@ TEXTBOX
 1
 
 TEXTBOX
-2527
-21
-2734
-53
+1337
+1179
+1526
+1197
 Ejecución por puntos de control
 13
 0.0
@@ -2527,22 +2498,22 @@ PENS
 "Bajo" 1.0 0 -6459832 true "" ""
 
 PLOT
-2083
-920
+2082
+922
 2485
 1145
 Edificaciones por municipio
 Municipio
-Cantidad
-0.0
+Cantidad edificada
+1.0
 18.0
 0.0
-200.0
-false
+50.0
+true
 false
 "" ""
 PENS
-"Edificacion" 1.0 1 -16777216 true "" ""
+"Edificaciones" 1.0 1 -16777216 true "" ""
 
 @#$#@#$#@
 ## WHAT IS IT?
