@@ -1,2 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<metadata xml:lang="es"><Esri><CreaDate>20210626</CreaDate><CreaTime>08295900</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce><DataProperties><lineage><Process ToolSource="c:\program files (x86)\arcgis\desktop10.6\ArcToolbox\Toolboxes\Data Management Tools.tbx\CalculateStatistics" Date="20210626" Time="082959">CalculateStatistics "C:\OneDrive - Universidad de Alcala\catastro\TIFIEM\Modelo_actualizado\post_clip\dist_au_25_c.asc" 1 1 # OVERWRITE "Feature Set"</Process></lineage></DataProperties></Esri></metadata>
