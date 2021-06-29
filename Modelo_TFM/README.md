@@ -12,8 +12,8 @@ Open the file using the aplication, follow the indications below.
 ## Files
 
 * ``MODELO_TFM.nlogo``: File of the model itself
-* ``base_info``: Folder that contais all the necessary geografic information to run the model
-* ``output``: Folder that contains examples of outputs
+* ``datos_entrada``: Folder that contais all the necessary geografic information to run the model
+* ``resultados``: Folder that contains examples of outputs
 ## Further Reading
 ## PARA JULIA
 
