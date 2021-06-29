@@ -109,9 +109,9 @@ globals [
 
 ;----------------------------------------------------------------------------------------------------------------
 
-breed [ nombres_municipios nombre_municipio ]
-breed [ promotoras1 promotora1 ]
-breed [ promotoras2 promotora2 ]
+breed [ nombres_municipios nombre_municipio ]  ;; para los nombres de los municipios
+breed [ promotoras1 promotora1 ] ;; raza de los promotores de tipo 1
+breed [ promotoras2 promotora2 ] ;; raza de los promotores de tipo 2
 
 ;----------------------------------------------------------------------------------------------------------------
 
@@ -150,18 +150,18 @@ patches-own [
 
 promotoras1-own [
 
-  area_influencia
-  radio_busqueda
-  mejor_aptitud
-  tipologia_a_construir
-  intentos
-  adaptacion
-  reinicios
-  satisfaccion
-  ganancias
+  area_influencia ;; variable que guardara los pixeles que tiene dentro del buffer en funcion de su radio de busqueda
+  radio_busqueda  ;; define el buffer con los pixeles a los que tiene acceso a información
+  mejor_aptitud   ;; guardara el valor del pixel con mejor aptitud para ser constuido
+  tipologia_a_construir  ;; derivado de la mejor aptitud, en este caso el nombre del tipo de edificacion
+  intentos         ;; numero de intentos fallidos a la hora de construir
+  adaptacion       ;; en funcion del numero de intentos, cuan rapido se adapta, es decir cuan rapido cambia a otro tipo de construccion que no es su ideal
+  reinicios        ;; simplemente controlar problemas derivados de la adaptacion en bucle
+  satisfaccion     ;; evalua como de bien se ajusta el pixel que ha construido a lo que deseaba construir
+  ganancias        ;; mide cuantitativamente como de bien se ha ajustado la construccion que ha realizado en funcion del numero de intentos que le ha llevado y el precio que ha tenido que pagar por el pixel
 ]
 
-promotoras2-own [
+promotoras2-own [ ;; analogos a los de tipo 1, pero tendran distintos valores en funcion del grado de diferenciacion escogido
 
   area_influencia
   radio_busqueda
@@ -184,13 +184,14 @@ promotoras2-own [
 
 to inicio
 
-  __clear-all-and-reset-ticks
+  __clear-all-and-reset-ticks ;; borrarlo todo, reinicializando todo el modelo
 
   set directorio_de_modelo pathdir:get-model-path  ;; guardar el directorio en el que esta guardado el modelo
   set-current-directory (word directorio_de_modelo "\\datos_entrada") ;; poner como directorio principal la carpeta
                                                                       ;; que contiene los archivos ASCII de los
                                                                       ;; datos de entrada
 
+  ;; cargado de los datos de partida
   set area_estudio_SHP_dataset         gis:load-dataset "Area_estudio.shp"
   set area_estudio_dataset             gis:load-dataset "ae_asc_25_c.asc"
   set precio_viviendas_dataset         gis:load-dataset "pviv_25_c.asc"
@@ -202,8 +203,9 @@ to inicio
   set dist_zonas_verdes_dataset        gis:load-dataset "d_zv_25_c_i_n.asc"
   set tipo_viviendas_dataset           gis:load-dataset "resi_class_c.asc"
 
-  gis:set-world-envelope (gis:envelope-of area_estudio_dataset)
+  gis:set-world-envelope (gis:envelope-of area_estudio_dataset) ;; define los limites en funcion del area de estudio
 
+  ;; asignacion al entorno de cada uno de los valores de sus variables en funcion de los datos de entrada leidos anteriormente
   gis:apply-raster area_estudio_dataset             area_estudio
   gis:apply-raster precio_viviendas_dataset         precio_viviendas
   gis:apply-raster zonificacion_dataset             zonificacion
@@ -217,6 +219,7 @@ to inicio
   ;; establece aquellos pixeles que son susceptibles a ser edificados, utilizando los datos de entrada
   ask patches with [(area_estudio > 0) and (zonificacion = 2) and (tipo_viviendas = 1)] [set disponible 1]
 
+  ;; ejecuta la funcion de visualización del area de estudio0
   mostrar_area_estudio
 
 end
@@ -238,11 +241,12 @@ end
 
 to mostrar_area_estudio
 
-  ask nombres_municipios [ die ]
-  ask patches with [area_estudio > 0] [set pcolor 49]
-  ask patches with [area_estudio <= 0] [set pcolor white]
+  ask nombres_municipios [ die ] ;; quita los que haya
+  ask patches with [area_estudio > 0] [set pcolor 49] ;; colorea los munitipios
+  ask patches with [area_estudio <= 0] [set pcolor white] ;; el resto lo deja en blanco
 
-  gis:draw area_estudio_SHP_dataset 1
+  ;; añade los nombres y dibuja los limites
+    gis:draw area_estudio_SHP_dataset 1
   foreach gis:feature-list-of area_estudio_SHP_dataset [ ?1 -> gis:set-drawing-color black
   let centroid gis:location-of gis:centroid-of ?1
        if not empty? centroid
@@ -429,6 +433,7 @@ to mostrar_zonas_simuladas [tipo_visualizacion]
   let edificacion patches with [modificado = 1]
   show (word "Total construido: "count edificacion) ;; mostrar total construido
 
+  ;; da a elegir 3 formatos para la visualización de los resultados
   if tipo_visualizacion = "TIPOLOGIA" [
     ask edificacion with [tipo_viviendas = 2] [set pcolor blue] ;; nuevas multifamiliares
     ask edificacion with [tipo_viviendas = 3] [set pcolor orange] ;; nuevas unifamiliares
@@ -510,9 +515,11 @@ end
 
 to calcular_demandas
 
+  ;; calcula la demanda total como la suma de las introducidas de cada tipo
   set demanda_total (demanda_multifamiliar + demanda_unifamiliar)
   show (word "Demanda total de viviendas: " demanda_total)
 
+  ;; reparte las demandas en funcion de los coeficientes de cada estandar
   set demanda_multifamiliar_alto   (demanda_multifamiliar * (Proporcion_multifamiliar_alto  / 100))
   set demanda_multifamiliar_medio  (demanda_multifamiliar * (Proporcion_multifamiliar_medio / 100))
   set demanda_multifamiliar_bajo   (demanda_multifamiliar * (Proporcion_multifamiliar_bajo  / 100))
@@ -521,6 +528,7 @@ to calcular_demandas
   show (word "Demanda de viviendas multifamiliares de estandar medio: " demanda_multifamiliar_medio)
   show (word "Demanda de viviendas multifamiliares de estandar bajo: " demanda_multifamiliar_bajo)
 
+  ;; reparte las demandas en funcion de los coeficientes de cada estandar
   set demanda_unifamiliar_alto   (demanda_unifamiliar * (Proporcion_unifamiliar_alto  / 100))
   set demanda_unifamiliar_medio  (demanda_unifamiliar * (Proporcion_unifamiliar_medio / 100))
 
@@ -536,6 +544,7 @@ end
 
 to actualizar_demandas
 
+
   set demanda_total (demanda_multifamiliar_alto + demanda_multifamiliar_medio + demanda_multifamiliar_bajo +
                      demanda_unifamiliar_alto + demanda_unifamiliar_medio)
 end
@@ -548,20 +557,29 @@ end
 
 to establecer_ponderaciones
 
+  ;; calcula la sumad de todas las ponderaciones introducidas
   let total_importancias (Distancia_a_urbano_consolidado + Distancia_a_carreteras + Distancia_a_transporte_público +
                           Distancia_a_zonas_de_trabajo + Distancia_a_zonas_verdes)
 
+  ;; teniendo la suma, normaliza cada importancia de forma que el conjunto sume 1
   let importancia_u_c (Distancia_a_urbano_consolidado / total_importancias)
   let importancia_ca  (Distancia_a_carreteras / total_importancias)
   let importancia_tp  (Distancia_a_transporte_público / total_importancias)
   let importancia_zt  (Distancia_a_zonas_de_trabajo / total_importancias)
   let importancia_zv  (Distancia_a_zonas_verdes / total_importancias)
 
+  ;; ajuste de la ponderacion que hace cada tipo de promotor. Un ajuste realiza una homogeneización de las preferencias
+  ;; promotora 1, mientras que el otro realza las preferencias con las ponderaciones mas altas, y reduce aquellas a las que
+  ;; se le ha dado menor importancia
   let ajuste_p1 (1.1 - Diferenciación)
   let ajuste_p2 (1.1 + Diferenciación)
 
   ;·················································································································
 
+  ;; calcula las ponderaciones para cada combinación de tipo - estándar y para cada tipo de promotora, usando las
+  ;; preferencias del usuario (nivel 1 - que equivaldrían a las ponderaciones de una hipotética población) y las
+  ;; combina con unas ponderaciones introducidas por mi en funcion de las promociones observadas en el area de estudio
+  ;; (segundo nivel) y que por ultimo se matizan con el grado de diferenciación entre cada promotora (tercer nivel)
   let tot1 ((2 ^ ajuste_p1) + (2.5 ^ ajuste_p1) + (0.5 ^ ajuste_p1) + (2 ^ ajuste_p1) + (3 ^ ajuste_p1))
   set preferencia_urb_conso_alto_multi_p1  (importancia_u_c * ((2 ^ ajuste_p1) / tot1))
   set preferencia_carretera_alto_multi_p1  (importancia_ca  * ((2.5 ^ ajuste_p1) / tot1))
@@ -644,8 +662,12 @@ end
 
 to establecer_aptitudes
 
+  ;; ejecuta el calculo de las distintas ponderaciones en funcion de lo escogido por el usuario en la configuración del modelo
   establecer_ponderaciones
 
+  ;; a cada pixel que es susceptible de ser edificado le otorga los valores de aptitud para cada tipo de combinación
+  ;; tipología - estándar y tipo de promotora. Se ha hecho así porque este valor no cambia a lo largo de la simulación y
+  ;; de esta manera solo se tiene que computar una única vez
   ask patches with [disponible = 1] [
 
     set aptitud_multi_alto_p1   ((preferencia_urb_conso_alto_multi_p1 * dist_urbano) + (preferencia_carretera_alto_multi_p1 * dist_carreteras) +
@@ -700,20 +722,21 @@ end
 
 to crear_promotoras
 
-  ask promotoras1 [die]
-  create-promotoras1 Número_promotoras_tipo_1
+  ask promotoras1 [die] ;; mata las que haya
+  create-promotoras1 Número_promotoras_tipo_1 ;; crea en funcion del número que haya escogido el usuario
 
   ask promotoras1 [
 
-    set radio_busqueda (10 + (Diferenciación * 30))
-    set shape "circle"
-    set color violet
-    set size radio_busqueda
-    set intentos 0
-    set adaptacion precision ((10 + (10 * Diferenciación)) / 5) 0
-    set reinicios 0
+    set radio_busqueda (10 + (Diferenciación * 30)) ;; el radio de busqueda es un valor fijo (10 píxeles - 250m) mas una cantidad en funcion de la diferenciación que haya escogido el usuario
+    set shape "circle"  ;; la forma que toma en el espacio es un ciruclo
+    set color violet    ;; color violeta
+    set size radio_busqueda   ;; su tamaño es consecuencia directa de su radio de busqueda (buffer)
+    set intentos 0 ;; establece los intentos iniciales a 0
+    set adaptacion precision ((10 + (10 * Diferenciación)) / 5) 0 ;; establece la adaptacion en funcion de la diferenciación, es el numero de veces que intenta construir lo que quiere
+    set reinicios 0 ;; solo para evaluar errores de adaptacion
   ]
 
+  ;; analogo a la promotora 1, pero con unos radios de busqueda y adaptacion calculados de una forma distinta
   ask promotoras2 [die]
   create-promotoras2 Número_promotoras_tipo_2
 
@@ -737,6 +760,8 @@ end
 
 to movilizar_promotoras
 
+  ;; mueve a las promotoras a un pixel que sea susceptible de ser edificado y le añade los pixeles que tambien lo son
+  ;; en funcion de su buffer de alcance
   ask promotoras1 [
     move-to one-of patches with [disponible = 1]
     set area_influencia area_influecia_de_cada_promotora self radio_busqueda
@@ -756,6 +781,7 @@ end
 
 to-report area_influecia_de_cada_promotora [promotora distancia]
 
+  ;; funcion destinada a devolver el area buffer a cada promotora
   let disponibilidad patches with [disponible = 1]
   let aqui promotora
   let area disponibilidad with [distance aqui < distancia]
@@ -774,14 +800,19 @@ to seleccion_mejor_pixel
 
   ask promotoras1 [
 
+    ;; le pregunta al buffer del promotor el maximo valor para cada tipo de edificacion que puede construir
     let mejor_aptitud_mu_a (max [aptitud_multi_alto_p1] of area_influencia)
     let mejor_aptitud_mu_m (max [aptitud_multi_medio_p1] of area_influencia)
     let mejor_aptitud_mu_b (max [aptitud_multi_bajo_p1] of area_influencia)
     let mejor_aptitud_un_a (max [aptitud_uni_alto_p1] of area_influencia)
     let mejor_aptitud_un_m (max [aptitud_uni_medio_p1] of area_influencia)
 
+    ;; hace una lista con todas las aptitudes y las ordena de menor a mayor
     let orden_mejores sort (list mejor_aptitud_mu_a mejor_aptitud_mu_m mejor_aptitud_mu_b mejor_aptitud_un_a mejor_aptitud_un_m)
 
+    ;; al principio intenta construir el uso que presente la mejor aptitud. A me dida que no sea capaz de constuir una
+    ;; edificacion de ese uso tendra que pasar al siguiente mejor, y asi sucesivamente. Su satisfaccion se plasma aqui pero
+    ;; solo se suma si posteriormente ha conseguido construir
     if intentos <= adaptacion [
       set mejor_aptitud item 4 orden_mejores
       set satisfaccion 5
@@ -807,6 +838,10 @@ to seleccion_mejor_pixel
       set satisfaccion 1
     ]
 
+    ;; en funcion de la tipologia que ha elegido como mejor aptitud (determinado  por los intentos y la adaptabilidad)
+    ;; se mueve al pixel que tiene ese valor. Esto de momento no tiene extrema utilidad, pero en un futuro permitira
+    ;; evaluar simultaneidad de posiciones entre promotoras en un mismo pixel, lo que en ultima instancia permitira
+    ;; modelar la competencia entre ellas
     if mejor_aptitud = mejor_aptitud_un_a [
 
       let list_coor posicion_pixel 1 mejor_aptitud area_influencia
@@ -843,6 +878,7 @@ to seleccion_mejor_pixel
     ]
   ]
 
+  ;; analogo a la promotora 1
   ask promotoras2 [
 
     let mejor_aptitud_mu_a (max [aptitud_multi_alto_p2] of area_influencia)
@@ -923,15 +959,18 @@ end
 
 to-report posicion_pixel [tipo_mejor_aptitud valor area]
 
+  ;; funcion que devuelve la posicion del pixel que la promotora ha seleccionado como su mejor baza para constuir
   if tipo_mejor_aptitud = 1 [
 
     let pixel area with [aptitud_uni_alto_p1 = valor]
     let x_coor [pxcor] of pixel
     let y_coor [pycor] of pixel
-
+    ;; las primitiras pycor e pxcoor devuelven una lista de un unico elemento, por lo que es necesario acceder a este
+    ;; elemento como si fuera una lista para asi devolver el valor y no la lista
     report list item 0 x_coor item 0 y_coor
   ]
 
+  ;; analogo al anterior, con otra combinacion
   if tipo_mejor_aptitud = 2 [
 
     let pixel area with [aptitud_uni_medio_p1 = valor]
@@ -1024,28 +1063,44 @@ to construir
 
   ask promotoras1 [
 
+    ;; si ha realizado demasiados intentos sin exito reinicializa los intentos, si no, le suma un intento
     ifelse intentos < (adaptacion * 6) [set intentos (intentos + 1)] [set intentos 0 set reinicios (reinicios + 1)]
 
+    ;; le pregunta al pixel en el que esta ubicado si ya ha sido construido por otra promotora
     let pixel_ya_construido? [modificado] of patch-here
+    ;; le pregunta al pixel como es de caro (3 caro, 2 medio, 1 barato)
     let precio_pixel [precio_viviendas] of patch-here
 
+    ;; si el pixel no se ha construido ya
     if pixel_ya_construido? = 0 [
 
+      ;; en funcion de la tipologia que la promotora quiere construir, modifica los valores del parche en el que se
+      ;; encuentra, siempre y cuando haya demanda de esa tipologia y estándar
       if tipologia_a_construir = "unifamiliar_estandar_alto" and demanda_unifamiliar_alto > 0 [
 
+        ;; cambia los valores del pixel
         ask patch-here [set modificado 1]
         ask patch-here [set disponible 0]
         ask patch-here [set tipo_viviendas 3]
         ask patch-here [set estandar 1]
 
+        ;; resta de la demanda el que se ha construido
         set demanda_unifamiliar_alto (demanda_unifamiliar_alto - 1)
+
+        ;; le resta el intento que se le ha sumado antes, pues aqui ha tenido éxito
         set intentos (intentos - 1)
+
+        ;; suma a la variable global lo que ha construido de cada tipo, para monotorizar estos valores
         set num_constru_uni_p1 (num_constru_uni_p1 + 1)
         set num_constru_alto_p1 (num_constru_alto_p1 + 1)
+
+        ; sus ganancias dependen de su satisfaccion y del precio que ha tenido que pagar por el pixel. Se le suma dos para
+        ;; que este valor no sea negativo, pues es posible tener una satisfaccion de 1 y un coste de pixel de 3
         set ganancias (ganancias + (satisfaccion - precio_pixel + 2))
         set ganancias_p1 (ganancias_p1 + ganancias)
       ]
 
+     ;; analogo a lo anterior, con otra combinacion
      if tipologia_a_construir = "unifamiliar_estandar_medio" and demanda_unifamiliar_medio > 0 [
 
         ask patch-here [set modificado 1]
@@ -1204,6 +1259,7 @@ end
 
 to actualizar_estado_promotoras
 
+  ;; cuando se ha suplido la demanda de una iteracion,para la siguiente es necesario reinicializar los intentos
   ask promotoras1 [
     set intentos 0
   ]
