@@ -21,12 +21,8 @@ globals [
   dist_zonas_verdes_dataset ;; raster con las distancias a zonas verdes
 
   demanda_total
-
   demanda_multifamiliar_alto demanda_multifamiliar_medio demanda_multifamiliar_bajo ;; demanda de multi
-  demanda_suplida_multifamiliar_alto demanda_suplida_multifamiliar_medio demanda_suplida_multifamiliar_bajo ;; demandas suplidas por iteracion
-
-  demanda_unifamiliar_alto demanda_unifamiliar_medio demanda_unifamiliar_bajo ;; demanda uni
-  demanda_suplida_unifamiliar_alto demanda_suplida_unifamiliar_medio demanda_suplida_unifamiliar_bajo ;; demandas suplidas por iteracion
+  demanda_unifamiliar_alto demanda_unifamiliar_medio ;; demanda uni
 
   ;; VARIABLES PARA ESTABLECER LAS DISTINTAS PONDERACIONES PARA CADA TIPO DE EDIFICACION
   preferencia_urb_conso_alto_multi_p1
@@ -105,6 +101,10 @@ globals [
   ;; variables para evaluar las ganancias de cada tipo de promotora
   ganancias_p1
   ganancias_p2
+
+  ;; para corregir que cuando termine la simulacion se muestre el numero maximo de iteraciones
+  ;; + 1
+  correccion_mostrado_ticks
 ]
 
 ;----------------------------------------------------------------------------------------------------------------
@@ -221,6 +221,7 @@ to inicio
 
   ;; ejecuta la funcion de visualización del area de estudio0
   mostrar_area_estudio
+  set correccion_mostrado_ticks 0
 
 end
 
@@ -434,7 +435,7 @@ to mostrar_zonas_simuladas [tipo_visualizacion]
   show (word "Total construido: "count edificacion) ;; mostrar total construido
 
   ;; da a elegir 3 formatos para la visualización de los resultados
-  if tipo_visualizacion = "TIPOLOGIA" [
+  if tipo_visualizacion = "TIPOLOGÍA" [
     ask edificacion with [tipo_viviendas = 2] [set pcolor blue] ;; nuevas multifamiliares
     ask edificacion with [tipo_viviendas = 3] [set pcolor orange] ;; nuevas unifamiliares
 
@@ -442,7 +443,7 @@ to mostrar_zonas_simuladas [tipo_visualizacion]
     show (word "unifamiliar: " count edificacion with [tipo_viviendas = 3])
   ]
 
-  if tipo_visualizacion = "ESTANDAR" [
+  if tipo_visualizacion = "ESTÁNDAR" [
     ask edificacion with [estandar = 1] [set pcolor red] ;; estandar alto
     ask edificacion with [estandar = 2] [set pcolor green] ;; estandar medio
     ask edificacion with [estandar = 3] [set pcolor blue] ;; estandar bajo
@@ -452,7 +453,7 @@ to mostrar_zonas_simuladas [tipo_visualizacion]
     show (word "estandar alto: " count edificacion with [estandar = 3])
   ]
 
-  if tipo_visualizacion = "TIPOLOGIA_Y_ESTANDAR" [
+  if tipo_visualizacion = "TIPOLOGÍA_Y_ESTANDÁR" [
     ask edificacion with [(tipo_viviendas = 2) and (estandar = 1)] [set pcolor 115] ;; nuevas multifamiliares de estandar alto
     ask edificacion with [(tipo_viviendas = 2) and (estandar = 2)] [set pcolor 126] ;; nuevas multifamiliares de estandar medio
     ask edificacion with [(tipo_viviendas = 2) and (estandar = 3)] [set pcolor 135] ;; nuevas multifamiliares de estandar bajo
@@ -475,17 +476,8 @@ end
 ;###############################  GENERACIÓN DE GRÁFICOS DE SEGUIMIENTO  ###########################################
 ;-------------------------------------------------------------------------------------------------------------------
 
+
 to do-plot1
-  ;; plot de histograma con cantidad de edificado en cada municipio
-
-  set-current-plot "Edificaciones por municipio"
-  histogram [area_estudio] of patches with [(modificado = 1)]
-
-end
-
-;-------------------------------------------------------------------------------------------------------------------
-
-to do-plot2
   ;; plot de la cantidad que se va edificando de cada tipo de estandar
 
   set-current-plot "Nuevas edificaciones"
@@ -515,26 +507,25 @@ end
 
 to calcular_demandas
 
-  ;; calcula la demanda total como la suma de las introducidas de cada tipo
-  set demanda_total (demanda_multifamiliar + demanda_unifamiliar)
-  show (word "Demanda total de viviendas: " demanda_total)
-
-  ;; reparte las demandas en funcion de los coeficientes de cada estandar
-  set demanda_multifamiliar_alto   (demanda_multifamiliar * (Proporcion_multifamiliar_alto  / 100))
-  set demanda_multifamiliar_medio  (demanda_multifamiliar * (Proporcion_multifamiliar_medio / 100))
-  set demanda_multifamiliar_bajo   (demanda_multifamiliar * (Proporcion_multifamiliar_bajo  / 100))
+  set demanda_multifamiliar_alto   Multifamiliar_estándar_alto
+  set demanda_multifamiliar_medio  Multifamiliar_estándar_medio
+  set demanda_multifamiliar_bajo   Multifamiliar_estándar_bajo
 
   show (word "Demanda de viviendas multifamiliares de estandar alto: " demanda_multifamiliar_alto)
   show (word "Demanda de viviendas multifamiliares de estandar medio: " demanda_multifamiliar_medio)
   show (word "Demanda de viviendas multifamiliares de estandar bajo: " demanda_multifamiliar_bajo)
 
-  ;; reparte las demandas en funcion de los coeficientes de cada estandar
-  set demanda_unifamiliar_alto   (demanda_unifamiliar * (Proporcion_unifamiliar_alto  / 100))
-  set demanda_unifamiliar_medio  (demanda_unifamiliar * (Proporcion_unifamiliar_medio / 100))
+  set demanda_unifamiliar_alto   Unifamiliar_estándar_alto
+  set demanda_unifamiliar_medio  Unifamiliar_estándar_medio
 
   show (word "Demanda de viviendas unifamiliares de estandar alto: " demanda_unifamiliar_alto)
   show (word "Demanda de viviendas unifamiliares de estandar medio: " demanda_unifamiliar_medio)
 
+  ;; calcula la demanda total como la suma de las introducidas de cada tipo
+  set demanda_total (Multifamiliar_estándar_alto + Multifamiliar_estándar_medio + Multifamiliar_estándar_bajo +
+                    Unifamiliar_estándar_alto + Unifamiliar_estándar_medio)
+
+  show (word "Demanda total de viviendas: " demanda_total)
 end
 
 ;-------------------------------------------------------------------------------------------------------------------
@@ -543,7 +534,6 @@ end
 ;; actualiza el valor de demanta total para la iteracion actual
 
 to actualizar_demandas
-
 
   set demanda_total (demanda_multifamiliar_alto + demanda_multifamiliar_medio + demanda_multifamiliar_bajo +
                      demanda_unifamiliar_alto + demanda_unifamiliar_medio)
@@ -557,100 +547,135 @@ end
 
 to establecer_ponderaciones
 
-  ;; calcula la sumad de todas las ponderaciones introducidas
-  let total_importancias (Distancia_a_urbano_consolidado + Distancia_a_carreteras + Distancia_a_transporte_público +
-                          Distancia_a_zonas_de_trabajo + Distancia_a_zonas_verdes)
-
-  ;; teniendo la suma, normaliza cada importancia de forma que el conjunto sume 1
-  let importancia_u_c (Distancia_a_urbano_consolidado / total_importancias)
-  let importancia_ca  (Distancia_a_carreteras / total_importancias)
-  let importancia_tp  (Distancia_a_transporte_público / total_importancias)
-  let importancia_zt  (Distancia_a_zonas_de_trabajo / total_importancias)
-  let importancia_zv  (Distancia_a_zonas_verdes / total_importancias)
-
   ;; ajuste de la ponderacion que hace cada tipo de promotor. Un ajuste realiza una homogeneización de las preferencias
   ;; promotora 1, mientras que el otro realza las preferencias con las ponderaciones mas altas, y reduce aquellas a las que
   ;; se le ha dado menor importancia
   let ajuste_p1 (1.1 - Diferenciación)
   let ajuste_p2 (1.1 + Diferenciación)
 
-  ;·················································································································
+  ;·························································································
 
-  ;; calcula las ponderaciones para cada combinación de tipo - estándar y para cada tipo de promotora, usando las
-  ;; preferencias del usuario (nivel 1 - que equivaldrían a las ponderaciones de una hipotética población) y las
-  ;; combina con unas ponderaciones introducidas por mi en funcion de las promociones observadas en el area de estudio
-  ;; (segundo nivel) y que por ultimo se matizan con el grado de diferenciación entre cada promotora (tercer nivel)
-  let tot1 ((2 ^ ajuste_p1) + (2.5 ^ ajuste_p1) + (0.5 ^ ajuste_p1) + (2 ^ ajuste_p1) + (3 ^ ajuste_p1))
-  set preferencia_urb_conso_alto_multi_p1  (importancia_u_c * ((2 ^ ajuste_p1) / tot1))
-  set preferencia_carretera_alto_multi_p1  (importancia_ca  * ((2.5 ^ ajuste_p1) / tot1))
-  set preferencia_trans_pub_alto_multi_p1  (importancia_tp  * ((0.5 ^ ajuste_p1) / tot1))
-  set preferencia_zonas_tr_alto_multi_p1   (importancia_zt  * ((2 ^ ajuste_p1) / tot1))
-  set preferencia_zonas_ver_alto_multi_p1  (importancia_zv  * ((3 ^ ajuste_p1) / tot1))
+  ;; teniendo la suma, normaliza cada importancia de forma que el conjunto sume 1
+  let importancia_u_c1 Distancia_a_urbano_consolidado_multifamiliar_alto
+  let importancia_ca1  Distancia_a_carreteras_multifamiliar_alto
+  let importancia_tp1  Distancia_a_transporte_público_multifamiliar_alto
+  let importancia_zt1  Distancia_a_zonas_de_trabajo_multifamiliar_alto
+  let importancia_zv1  Distancia_a_zonas_verdes_multifamiliar_alto
 
-  let tot2 ((2 ^ ajuste_p1) + (3 ^ ajuste_p1) + (1 ^ ajuste_p1) + (2.5 ^ ajuste_p1) + (1.5 ^ ajuste_p1))
-  set preferencia_urb_conso_medio_multi_p1 (importancia_u_c * ((2 ^ ajuste_p1) / tot2))
-  set preferencia_carretera_medio_multi_p1 (importancia_ca  * ((3 ^ ajuste_p1) / tot2))
-  set preferencia_trans_pub_medio_multi_p1 (importancia_tp  * ((1 ^ ajuste_p1) / tot2))
-  set preferencia_zonas_tr_medio_multi_p1  (importancia_zt  * ((2.5 ^ ajuste_p1) / tot2))
-  set preferencia_zonas_ver_medio_multi_p1 (importancia_zv  * ((1.5 ^ ajuste_p1) / tot2))
+  ;; calcula la suma de todas las ponderaciones introducidas
+  let total_importancias1 (importancia_u_c1 + importancia_ca1 + importancia_tp1 + importancia_zt1 + importancia_zv1)
 
-  let tot3 ((3.5 ^ ajuste_p1) + (0.5 ^ ajuste_p1) + (3.5 ^ ajuste_p1) + (2 ^ ajuste_p1) + (0.5 ^ ajuste_p1))
-  set preferencia_urb_conso_bajo_multi_p1  (importancia_u_c * ((3.5 ^ ajuste_p1) / tot3))
-  set preferencia_carretera_bajo_multi_p1  (importancia_ca  * ((0.5 ^ ajuste_p1) / tot3))
-  set preferencia_trans_pub_bajo_multi_p1  (importancia_tp  * ((3.5 ^ ajuste_p1) / tot3))
-  set preferencia_zonas_tr_bajo_multi_p1   (importancia_zt  * ((2 ^ ajuste_p1) / tot3))
-  set preferencia_zonas_ver_bajo_multi_p1  (importancia_zv  * ((0.5 ^ ajuste_p1) / tot3))
+  set preferencia_urb_conso_alto_multi_p1  ((importancia_u_c1 / total_importancias1) ^ ajuste_p1)
+  set preferencia_carretera_alto_multi_p1  ((importancia_ca1 / total_importancias1) ^ ajuste_p1)
+  set preferencia_trans_pub_alto_multi_p1  ((importancia_tp1 / total_importancias1) ^ ajuste_p1)
+  set preferencia_zonas_tr_alto_multi_p1   ((importancia_zt1 / total_importancias1) ^ ajuste_p1)
+  set preferencia_zonas_ver_alto_multi_p1  ((importancia_zv1 / total_importancias1) ^ ajuste_p1)
 
-  let tot4 ((1 ^ ajuste_p1) + (3.5 ^ ajuste_p1) + (0 ^ ajuste_p1) + (2 ^ ajuste_p1) + (3.5 ^ ajuste_p1))
-  set preferencia_urb_conso_alto_uni_p1    (importancia_u_c * ((1 ^ ajuste_p1) / tot4))
-  set preferencia_carretera_alto_uni_p1    (importancia_ca  * ((3.5 ^ ajuste_p1) / tot4))
-  set preferencia_trans_pub_alto_uni_p1    (importancia_tp  * ((0 ^ ajuste_p1) / tot4))
-  set preferencia_zonas_tr_alto_uni_p1     (importancia_zt  * ((2 ^ ajuste_p1) / tot4))
-  set preferencia_zonas_ver_alto_uni_p1    (importancia_zv  * ((3.5 ^ ajuste_p1) / tot4))
+  set preferencia_urb_conso_alto_multi_p2  ((importancia_u_c1 / total_importancias1) ^ ajuste_p2)
+  set preferencia_carretera_alto_multi_p2  ((importancia_ca1 / total_importancias1) ^ ajuste_p2)
+  set preferencia_trans_pub_alto_multi_p2  ((importancia_tp1 / total_importancias1) ^ ajuste_p2)
+  set preferencia_zonas_tr_alto_multi_p2   ((importancia_zt1 / total_importancias1) ^ ajuste_p2)
+  set preferencia_zonas_ver_alto_multi_p2  ((importancia_zv1 / total_importancias1) ^ ajuste_p2)
 
-  let tot5 ((2.5 ^ ajuste_p1) + (2.5 ^ ajuste_p1) + (1 ^ ajuste_p1) + (2.5 ^ ajuste_p1) + (1.5 ^ ajuste_p1))
-  set preferencia_urb_conso_medio_uni_p1   (importancia_u_c * ((2.5 ^ ajuste_p1) / tot5))
-  set preferencia_carretera_medio_uni_p1   (importancia_ca  * ((2.5 ^ ajuste_p1) / tot5))
-  set preferencia_trans_pub_medio_uni_p1   (importancia_tp  * ((1 ^ ajuste_p1) / tot5))
-  set preferencia_zonas_tr_medio_uni_p1    (importancia_zt  * ((2.5 ^ ajuste_p1) / tot5))
-  set preferencia_zonas_ver_medio_uni_p1   (importancia_zv  * ((1.5 ^ ajuste_p1) / tot5))
 
-  ;·················································································································
+  ;·························································································
 
-  let tot6 ((2 ^ ajuste_p2) + (2.5 ^ ajuste_p2) + (0.5 ^ ajuste_p2) + (2 ^ ajuste_p2) + (3 ^ ajuste_p2))
-  set preferencia_urb_conso_alto_multi_p2  (importancia_u_c * ((1 ^ ajuste_p2) / tot6))
-  set preferencia_carretera_alto_multi_p2  (importancia_ca  * ((2.5 ^ ajuste_p2) / tot6))
-  set preferencia_trans_pub_alto_multi_p2  (importancia_tp  * ((0.5 ^ ajuste_p2) / tot6))
-  set preferencia_zonas_tr_alto_multi_p2   (importancia_zt  * ((2 ^ ajuste_p2) / tot6))
-  set preferencia_zonas_ver_alto_multi_p2  (importancia_zv  * ((3 ^ ajuste_p2) / tot6))
+  ;; teniendo la suma, normaliza cada importancia de forma que el conjunto sume 1
+  let importancia_u_c2 Distancia_a_urbano_consolidado_multifamiliar_medio
+  let importancia_ca2  Distancia_a_carreteras_multifamiliar_medio
+  let importancia_tp2  Distancia_a_transporte_público_multifamiliar_medio
+  let importancia_zt2  Distancia_a_zonas_de_trabajo_multifamiliar_medio
+  let importancia_zv2  Distancia_a_zonas_verdes_multifamiliar_medio
 
-  let tot7 ((2 ^ ajuste_p2) + (3 ^ ajuste_p2) + (1 ^ ajuste_p2) + (2.5 ^ ajuste_p2) + (1.5 ^ ajuste_p2))
-  set preferencia_urb_conso_medio_multi_p2 (importancia_u_c * ((2 ^ ajuste_p2) / tot7))
-  set preferencia_carretera_medio_multi_p2 (importancia_ca  * ((3 ^ ajuste_p2) / tot7))
-  set preferencia_trans_pub_medio_multi_p2 (importancia_tp  * ((1 ^ ajuste_p2) / tot7))
-  set preferencia_zonas_tr_medio_multi_p2  (importancia_zt  * ((2.5 ^ ajuste_p2) / tot7))
-  set preferencia_zonas_ver_medio_multi_p2 (importancia_zv  * ((1.5 ^ ajuste_p2) / tot7))
+  ;; calcula la suma de todas las ponderaciones introducidas
+  let total_importancias2 (importancia_u_c2 + importancia_ca2 + importancia_tp2 + importancia_zt2 + importancia_zv2)
 
-  let tot8 ((3.5 ^ ajuste_p2) + (0.5 ^ ajuste_p2) + (3.5 ^ ajuste_p2) + (2 ^ ajuste_p2) + (0.5 ^ ajuste_p2))
-  set preferencia_urb_conso_bajo_multi_p2  (importancia_u_c * ((3.5 ^ ajuste_p2) / tot8))
-  set preferencia_carretera_bajo_multi_p2  (importancia_ca  * ((0.5 ^ ajuste_p2) / tot8))
-  set preferencia_trans_pub_bajo_multi_p2  (importancia_tp  * ((3.5 ^ ajuste_p2) / tot8))
-  set preferencia_zonas_tr_bajo_multi_p2   (importancia_zt  * ((2 ^ ajuste_p2) / tot8))
-  set preferencia_zonas_ver_bajo_multi_p2  (importancia_zv  * ((0.5 ^ ajuste_p2) / tot8))
+  set preferencia_urb_conso_medio_multi_p1  ((importancia_u_c2 / total_importancias2) ^ ajuste_p1)
+  set preferencia_carretera_medio_multi_p1  ((importancia_ca2 / total_importancias2) ^ ajuste_p1)
+  set preferencia_trans_pub_medio_multi_p1  ((importancia_tp2 / total_importancias2) ^ ajuste_p1)
+  set preferencia_zonas_tr_medio_multi_p1   ((importancia_zt2 / total_importancias2) ^ ajuste_p1)
+  set preferencia_zonas_ver_medio_multi_p1  ((importancia_zv2 / total_importancias2) ^ ajuste_p1)
 
-  let tot9 ((1 ^ ajuste_p2) + (3.5 ^ ajuste_p2) + (0 ^ ajuste_p2) + (2 ^ ajuste_p2) + (3.5 ^ ajuste_p2))
-  set preferencia_urb_conso_alto_uni_p2    (importancia_u_c * ((1 ^ ajuste_p2) / tot9))
-  set preferencia_carretera_alto_uni_p2    (importancia_ca  * ((3.5 ^ ajuste_p2) / tot9))
-  set preferencia_trans_pub_alto_uni_p2    (importancia_tp  * ((0 ^ ajuste_p2) / tot9))
-  set preferencia_zonas_tr_alto_uni_p2     (importancia_zt  * ((2 ^ ajuste_p2) / tot9))
-  set preferencia_zonas_ver_alto_uni_p2    (importancia_zv  * ((3.5 ^ ajuste_p2) / tot9))
+  set preferencia_urb_conso_medio_multi_p2  ((importancia_u_c2 / total_importancias2) ^ ajuste_p2)
+  set preferencia_carretera_medio_multi_p2  ((importancia_ca2 / total_importancias2) ^ ajuste_p2)
+  set preferencia_trans_pub_medio_multi_p2  ((importancia_tp2 / total_importancias2) ^ ajuste_p2)
+  set preferencia_zonas_tr_medio_multi_p2   ((importancia_zt2 / total_importancias2) ^ ajuste_p2)
+  set preferencia_zonas_ver_medio_multi_p2  ((importancia_zv2 / total_importancias2) ^ ajuste_p2)
 
-  let tot10 ((2.5 ^ ajuste_p2) + (2.5 ^ ajuste_p2) + (1 ^ ajuste_p2) + (2.5 ^ ajuste_p2) + (1.5 ^ ajuste_p2))
-  set preferencia_urb_conso_medio_uni_p2   (importancia_u_c * ((2.5 ^ ajuste_p2) / tot10))
-  set preferencia_carretera_medio_uni_p2   (importancia_ca  * ((2.5 ^ ajuste_p2) / tot10))
-  set preferencia_trans_pub_medio_uni_p2   (importancia_tp  * ((1 ^ ajuste_p2) / tot10))
-  set preferencia_zonas_tr_medio_uni_p2    (importancia_zt  * ((2.5 ^ ajuste_p2) / tot10))
-  set preferencia_zonas_ver_medio_uni_p2   (importancia_zv  * ((1.5 ^ ajuste_p2) / tot10))
+
+  ;·························································································
+
+  ;; teniendo la suma, normaliza cada importancia de forma que el conjunto sume 1
+  let importancia_u_c3 Distancia_a_urbano_consolidado_multifamiliar_bajo
+  let importancia_ca3  Distancia_a_carreteras_multifamiliar_bajo
+  let importancia_tp3  Distancia_a_transporte_público_multifamiliar_bajo
+  let importancia_zt3  Distancia_a_zonas_de_trabajo_multifamiliar_bajo
+  let importancia_zv3  Distancia_a_zonas_verdes_multifamiliar_bajo
+
+  ;; calcula la suma de todas las ponderaciones introducidas
+  let total_importancias3 (importancia_u_c3 + importancia_ca3 + importancia_tp3 + importancia_zt3 + importancia_zv3)
+
+  set preferencia_urb_conso_bajo_multi_p1  ((importancia_u_c3 / total_importancias3) ^ ajuste_p1)
+  set preferencia_carretera_bajo_multi_p1  ((importancia_ca3 / total_importancias3) ^ ajuste_p1)
+  set preferencia_trans_pub_bajo_multi_p1  ((importancia_tp3 / total_importancias3) ^ ajuste_p1)
+  set preferencia_zonas_tr_bajo_multi_p1   ((importancia_zt3 / total_importancias3) ^ ajuste_p1)
+  set preferencia_zonas_ver_bajo_multi_p1  ((importancia_zv3 / total_importancias3) ^ ajuste_p1)
+
+  set preferencia_urb_conso_bajo_multi_p2  ((importancia_u_c3 / total_importancias3) ^ ajuste_p2)
+  set preferencia_carretera_bajo_multi_p2  ((importancia_ca3 / total_importancias3) ^ ajuste_p2)
+  set preferencia_trans_pub_bajo_multi_p2  ((importancia_tp3 / total_importancias3) ^ ajuste_p2)
+  set preferencia_zonas_tr_bajo_multi_p2   ((importancia_zt3 / total_importancias3) ^ ajuste_p2)
+  set preferencia_zonas_ver_bajo_multi_p2  ((importancia_zv3 / total_importancias3) ^ ajuste_p2)
+
+
+  ;·························································································
+
+  ;; teniendo la suma, normaliza cada importancia de forma que el conjunto sume 1
+  let importancia_u_c4 Distancia_a_urbano_consolidado_unifamiliar_alto
+  let importancia_ca4  Distancia_a_carreteras_unifamiliar_alto
+  let importancia_tp4  Distancia_a_transporte_público_unifamiliar_alto
+  let importancia_zt4  Distancia_a_zonas_de_trabajo_unifamiliar_alto
+  let importancia_zv4  Distancia_a_zonas_verdes_unifamiliar_alto
+
+  ;; calcula la suma de todas las ponderaciones introducidas
+  let total_importancias4 (importancia_u_c4 + importancia_ca4 + importancia_tp4 + importancia_zt4 + importancia_zv4)
+
+  set preferencia_urb_conso_alto_uni_p1  ((importancia_u_c4 / total_importancias4) ^ ajuste_p1)
+  set preferencia_carretera_alto_uni_p1  ((importancia_ca4 / total_importancias4) ^ ajuste_p1)
+  set preferencia_trans_pub_alto_uni_p1  ((importancia_tp4 / total_importancias4) ^ ajuste_p1)
+  set preferencia_zonas_tr_alto_uni_p1   ((importancia_zt4 / total_importancias4) ^ ajuste_p1)
+  set preferencia_zonas_ver_alto_uni_p1  ((importancia_zv4 / total_importancias4) ^ ajuste_p1)
+
+  set preferencia_urb_conso_alto_uni_p2  ((importancia_u_c4 / total_importancias4) ^ ajuste_p2)
+  set preferencia_carretera_alto_uni_p2  ((importancia_ca4 / total_importancias4) ^ ajuste_p2)
+  set preferencia_trans_pub_alto_uni_p2  ((importancia_tp4 / total_importancias4) ^ ajuste_p2)
+  set preferencia_zonas_tr_alto_uni_p2   ((importancia_zt4 / total_importancias4) ^ ajuste_p2)
+  set preferencia_zonas_ver_alto_uni_p2  ((importancia_zv4 / total_importancias4) ^ ajuste_p2)
+
+  ;·························································································
+
+  ;; teniendo la suma, normaliza cada importancia de forma que el conjunto sume 1
+  let importancia_u_c5 Distancia_a_urbano_consolidado_unifamiliar_medio
+  let importancia_ca5  Distancia_a_carreteras_unifamiliar_medio
+  let importancia_tp5  Distancia_a_transporte_público_unifamiliar_medio
+  let importancia_zt5  Distancia_a_zonas_de_trabajo_unifamiliar_medio
+  let importancia_zv5  Distancia_a_zonas_verdes_unifamiliar_medio
+
+  ;; calcula la suma de todas las ponderaciones introducidas
+  let total_importancias5 (importancia_u_c5 + importancia_ca5 + importancia_tp5 + importancia_zt5 + importancia_zv5)
+
+  set preferencia_urb_conso_medio_uni_p1  ((importancia_u_c5 / total_importancias5) ^ ajuste_p1)
+  set preferencia_carretera_medio_uni_p1  ((importancia_ca5 / total_importancias5) ^ ajuste_p1)
+  set preferencia_trans_pub_medio_uni_p1  ((importancia_tp5 / total_importancias5) ^ ajuste_p1)
+  set preferencia_zonas_tr_medio_uni_p1   ((importancia_zt5 / total_importancias5) ^ ajuste_p1)
+  set preferencia_zonas_ver_medio_uni_p1  ((importancia_zv5 / total_importancias5) ^ ajuste_p1)
+
+  set preferencia_urb_conso_medio_uni_p2  ((importancia_u_c5 / total_importancias5) ^ ajuste_p2)
+  set preferencia_carretera_medio_uni_p2  ((importancia_ca5 / total_importancias5) ^ ajuste_p2)
+  set preferencia_trans_pub_medio_uni_p2  ((importancia_tp5 / total_importancias5) ^ ajuste_p2)
+  set preferencia_zonas_tr_medio_uni_p2   ((importancia_zt5 / total_importancias5) ^ ajuste_p2)
+  set preferencia_zonas_ver_medio_uni_p2  ((importancia_zv5 / total_importancias5) ^ ajuste_p2)
+
 
 end
 
@@ -1370,11 +1395,14 @@ to ejecutar_modelo
       construir               ;; intenta constuir
       actualizar_demandas     ;; se actualizan las demandas
       do-plot1                ;; actualizar los datos del grafico 1
-      do-plot2                ;; actualizar los datos del grafico 1
 
     ]
 
     tick ;; aumentar los ticks en 1
+  ]
+
+  if ticks = Número_de_iteraciones [
+    set correccion_mostrado_ticks 1
   ]
 
   guardar_simulacion ;; al finalizar se guardan los datos simulados
@@ -1411,11 +1439,171 @@ GRAPHICS-WINDOW
 ticks
 30.0
 
+TEXTBOX
+1337
+10
+1698
+43
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+3
+55.0
+1
+
+TEXTBOX
+1697
+10
+2027
+42
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+3
+15.0
+1
+
+TEXTBOX
+1699
+42
+1714
+799
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+3
+15.0
+1
+
+TEXTBOX
+2025
+10
+2526
+121
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+5
+45.0
+1
+
+TEXTBOX
+1700
+797
+2049
+855
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+3
+95.0
+1
+
+TEXTBOX
+1325
+10
+1340
+1172
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+3
+55.0
+1
+
+TEXTBOX
+1685
+42
+1700
+1171
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+3
+55.0
+1
+
+TEXTBOX
+1337
+1155
+1688
+1173
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+3
+55.0
+1
+
+TEXTBOX
+2014
+39
+2029
+121
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+3
+25.0
+1
+
+TEXTBOX
+2014
+120
+2512
+138
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+3
+15.0
+1
+
+TEXTBOX
+2509
+121
+2524
+795
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+3
+15.0
+1
+
+TEXTBOX
+1711
+783
+2512
+801
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+3
+15.0
+1
+
+TEXTBOX
+1698
+857
+1713
+1181
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+3
+95.0
+1
+
+TEXTBOX
+2510
+797
+2525
+1169
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+3
+95.0
+1
+
+TEXTBOX
+2050
+797
+2512
+815
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+3
+95.0
+1
+
+TEXTBOX
+1710
+1158
+2511
+1176
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+3
+95.0
+1
+
 BUTTON
-1334
-11
-1504
-125
+1338
+47
+1508
+107
 INICIO
 inicio\n\n
 NIL
@@ -1429,10 +1617,10 @@ NIL
 1
 
 BUTTON
-1334
-150
-1504
-183
+1336
+130
+1506
+163
 Mostrar el área de estudio
 mostrar_area_estudio
 NIL
@@ -1480,11 +1668,11 @@ NIL
 1
 
 BUTTON
-1336
+1337
 696
-1506
+1485
 732
-Mostrar edificación inicial
+Mostrar la edificación inicial
 mostrar_zonas_edificadas
 NIL
 1
@@ -1497,10 +1685,10 @@ NIL
 1
 
 BUTTON
-1335
-980
-1505
-1013
+1336
+992
+1506
+1025
 Urbano consolidado
 mostrar_distancia_zonas_urbanas_consolidadas
 NIL
@@ -1514,10 +1702,10 @@ NIL
 1
 
 BUTTON
-1335
-1013
-1505
-1046
+1336
+1025
+1506
+1058
 Carreteras
 mostrar_distancia_carreteras
 NIL
@@ -1531,10 +1719,10 @@ NIL
 1
 
 BUTTON
-1335
-1046
-1505
-1079
+1336
+1058
+1506
+1091
 Transporte público
 mostrar_distancia_transporte_publico
 NIL
@@ -1548,31 +1736,31 @@ NIL
 1
 
 INPUTBOX
-1708
-284
-1843
-350
-Demanda_unifamiliar
-600.0
+2035
+146
+2188
+206
+Multifamiliar_estándar_alto
+50.0
 1
 0
 Number
 
 TEXTBOX
 1340
-947
+968
 1505
-979
+1000
 MOSTRAR DISTANCIAS A:
-13
+11
 0.0
 1
 
 BUTTON
-1335
-1079
-1505
-1112
+1336
+1091
+1506
+1124
 Zonas de trabajo
 mostrar_distancia_zonas_trabajo
 NIL
@@ -1586,10 +1774,10 @@ NIL
 1
 
 BUTTON
-1335
-1112
-1505
-1145
+1336
+1124
+1506
+1157
 Zonas verdes
 mostrar_distancia_zonas_verdes
 NIL
@@ -1604,10 +1792,10 @@ NIL
 
 BUTTON
 1337
-539
+540
 1507
-572
-Mostrar zonas urbanizables
+573
+Mostrar las zonas edificables
 mostrar_zonas_urbanizables
 NIL
 1
@@ -1637,22 +1825,22 @@ NIL
 1
 
 TEXTBOX
-1339
-193
-1489
-473
+1340
+183
+1490
+475
 MUNICIPIOS:\n\n01) Ajalvir\n02) Alcala  de Henares\n03) Anchuelo\n04) Camarma de Esteruelas\n05) Coslada\n06) Daganzo de Arriba\n07) Fresno de Torote\n08) Loeches\n09) Meco\n10) Mejorada del Campo\n11) Paracuellos de Jarama\n12) San Fernando de Henares\n13) Santorcaz\n14) Los Santos de la Humosa\n15) Torrejon de Ardoz\n16) Torres de la Alameda\n17) Valdeavero\n18) Villalbilla
 11
 0.0
 1
 
 TEXTBOX
-1512
-507
-1699
-587
+1515
+510
+1670
+565
 URBANO (azul)\nURBANIZABLE (verde)\nNO URBANIZABLE (gris oscuro)\nSIST.GENERALES (naranja)
-13
+11
 0.0
 1
 
@@ -1662,61 +1850,16 @@ TEXTBOX
 1615
 665
 CARA (naranja)\nMEDIA (amarillo)\nBARATA (verde)
-13
+11
 0.0
 1
 
-SLIDER
-1856
-403
-2053
-436
-Proporcion_multifamiliar_alto
-Proporcion_multifamiliar_alto
-0
-100 - Proporcion_multifamiliar_medio - Proporcion_multifamiliar_bajo
-10.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1856
-435
-2053
-468
-Proporcion_multifamiliar_medio
-Proporcion_multifamiliar_medio
-0
-100
-60.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1856
-468
-2053
-501
-Proporcion_multifamiliar_bajo
-Proporcion_multifamiliar_bajo
-0
-100 - Proporcion_multifamiliar_medio - Proporcion_multifamiliar_alto
-30.0
-1
-1
-NIL
-HORIZONTAL
-
 BUTTON
-1504
-150
-1685
-183
-Ocultar nombre municipios
+1506
+130
+1686
+163
+Ocultar el nombre de losmunicipios
 ask nombres_municipios [ die ]
 NIL
 1
@@ -1729,11 +1872,11 @@ NIL
 1
 
 BUTTON
-1506
+1485
 696
-1687
+1686
 732
-Mostrar estandar edificación
+Mostrar el estándar de cada edificación
 mostrar_viviendas_por_precios
 NIL
 1
@@ -1746,10 +1889,10 @@ NIL
 1
 
 BUTTON
-1707
-13
-2056
-127
+2048
+18
+2495
+100
 EJECUTAR MODELO
 ejecutar_modelo\n
 NIL
@@ -1763,32 +1906,32 @@ NIL
 1
 
 MONITOR
-2199
-45
-2324
-98
+2219
+804
+2346
+849
 Terreno disponible
 count patches with [disponible = 1]
-17
 1
-13
+1
+11
 
 MONITOR
-2084
-45
-2195
-98
+2057
+804
+2198
+849
 Iteración actual
-ticks + 1
-17
+ticks + 1 - correccion_mostrado_ticks
 1
-13
+1
+11
 
 INPUTBOX
 1710
-178
-1845
-238
+47
+1860
+107
 Número_de_iteraciones
 5.0
 1
@@ -1796,10 +1939,10 @@ Número_de_iteraciones
 Number
 
 BUTTON
-1335
-869
-1505
-915
+1332
+880
+1502
+926
 Clasificación de las viviendas
 mostrar_tipo_viviendas
 NIL
@@ -1813,39 +1956,39 @@ NIL
 1
 
 TEXTBOX
-1511
-18
-1632
-118
-INICIALIZACIÓN DEL MODELO\n\n(¡REQUERIDO ANTES DE EJECUTAR EL MODELO!)
-13
-0.0
-1
-
-TEXTBOX
-1512
-868
-1662
-916
-VACANTE (verde)\nMULTIFAMILIAR (azul)\nUNIFAMILIAR (naranja)
-13
-0.0
-1
-
-TEXTBOX
-1331
-126
-2073
-154
-__________________________________________________________________________________________________________________________
+1517
+48
+1643
+123
+INICIALIZACIÓN DEL MODELO\n(¡REQUERIDO ANTES DE EJECUTAR EL MODELO!)
 11
 0.0
 1
 
 TEXTBOX
-1697
+1509
+879
+1659
+927
+VACANTE (verde)\nMULTIFAMILIAR (azul)\nUNIFAMILIAR (naranja)
+11
+0.0
+1
+
+TEXTBOX
+1336
+27
+2030
+45
+___________________________________________________________________________________________________________________________________________________________
+11
+0.0
+1
+
+TEXTBOX
+1696
 10
-1712
+1711
 1172
 |\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n
 11
@@ -1853,42 +1996,42 @@ TEXTBOX
 1
 
 TEXTBOX
-2063
+2024
 10
-2078
-1172
+2039
+425
 |\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
 11
 0.0
 1
 
 TEXTBOX
-1713
-150
-1976
-182
-PARÁMETROS A SELECCIONAR:
-13
+1739
+14
+2001
+32
+SELECCIÓN DE LOS PARÁMETROS DE SIMULACIÓN
+11
 0.0
 1
 
 TEXTBOX
 1332
 477
-1700
-515
+1701
+497
 -------------------------------------------------------------------------
 15
 0.0
 1
 
 TEXTBOX
-2082
-13
-2232
-31
-MONOTORIZACIÓN:
-13
+1817
+818
+1921
+837
+MONOTORIZACIÓN
+11
 0.0
 1
 
@@ -1905,8 +2048,8 @@ TEXTBOX
 TEXTBOX
 1334
 669
-1717
-707
+1702
+688
 -------------------------------------------------------------------------
 15
 0.0
@@ -1923,298 +2066,218 @@ TEXTBOX
 1
 
 TEXTBOX
-1334
-920
-1703
-938
+1333
+941
+1702
+959
 -------------------------------------------------------------------------
 15
 0.0
 1
 
 TEXTBOX
-1333
+1336
 1158
-2513
-1186
-___________________________________________________________________________________________________________________________________________________________________________________________________
+2527
+1179
+___________________________________________________________________________________________________________________________________________________________________________________________________________________________
 11
 0.0
 1
 
 TEXTBOX
-2502
-12
-2517
-1171
+2521
+10
+2536
+1169
 |\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
 11
 0.0
 1
 
 TEXTBOX
-1720
-910
-2049
-966
-IMPORTANCIA DE LOS FACTORES (pesos que los distintos tipos de promotores deben tener en cuenta para la selección de zonas en las que quieren construir)
-13
-0.0
-1
-
-TEXTBOX
-1855
-174
-2053
-244
-Cada iteración representa un ciclo de construcción, determinado por la demanda que introduzca (recomendable 1 o 2 años)\n
-13
+1870
+47
+2013
+117
+Cada iteración representa un ciclo de construcción en el que se suple toda la demanda que introduzca\n
+11
 0.0
 1
 
 SLIDER
-1715
-981
-2049
-1014
-Distancia_a_urbano_consolidado
-Distancia_a_urbano_consolidado
-0
-1
-0.4
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1715
-1013
-2049
-1046
-Distancia_a_carreteras
-Distancia_a_carreteras
-0
-1
-0.3
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1715
-1046
-2049
-1079
-Distancia_a_transporte_público
-Distancia_a_transporte_público
-0
-1
-0.3
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1715
-1079
-2049
-1112
-Distancia_a_zonas_de_trabajo
-Distancia_a_zonas_de_trabajo
-0
-1
-0.25
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1715
-1112
-2049
-1145
-Distancia_a_zonas_verdes
-Distancia_a_zonas_verdes
+1796
+437
+2102
+470
+Distancia_a_urbano_consolidado_unifamiliar_alto
+Distancia_a_urbano_consolidado_unifamiliar_alto
 0
 1
 0.1
-0.01
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1796
+469
+2102
+502
+Distancia_a_carreteras_unifamiliar_alto
+Distancia_a_carreteras_unifamiliar_alto
+0
+1
+0.35
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1796
+501
+2102
+534
+Distancia_a_transporte_público_unifamiliar_alto
+Distancia_a_transporte_público_unifamiliar_alto
+0
+1
+0.0
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1796
+534
+2102
+567
+Distancia_a_zonas_de_trabajo_unifamiliar_alto
+Distancia_a_zonas_de_trabajo_unifamiliar_alto
+0
+1
+0.2
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1796
+567
+2102
+600
+Distancia_a_zonas_verdes_unifamiliar_alto
+Distancia_a_zonas_verdes_unifamiliar_alto
+0
+1
+0.35
+0.05
 1
 NIL
 HORIZONTAL
 
 INPUTBOX
-1709
-404
-1844
-502
-Demanda_multifamiliar
-400.0
+2195
+146
+2348
+206
+Multifamiliar_estándar_medio
+150.0
 1
 0
 Number
 
 TEXTBOX
-1710
-260
-2018
-292
-Demanda de edificacaiones de tipo unifamiliar:
-13
+2037
+129
+2366
+148
+DEMANDA DE EDIFICACIONES DE TIPO MULTIFAMILIAR:
+11
 0.0
 1
 
 TEXTBOX
-1711
-380
-2032
-412
-Demanda de edificaciones de tipo multifamiliar:\n
-13
+1337
+107
+2029
+127
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+15
 0.0
 1
 
-SLIDER
-1855
-284
-2052
-317
-Proporcion_unifamiliar_medio
-Proporcion_unifamiliar_medio
-0
-100
-70.0
+TEXTBOX
+1698
+1093
+2210
+1111
+····················································································································
+15
+0.0
 1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-1855
-317
-2052
-350
-Proporcion_unifamiliar_alto
-Proporcion_unifamiliar_alto
-0
-100 - Proporcion_unifamiliar_medio
-30.0
-1
-1
-NIL
-HORIZONTAL
 
 TEXTBOX
 1699
-241
-2066
-259
--------------------------------------------------------------------------
+318
+2026
+336
+---------------------------------------------------------------------------------------------------
 15
 0.0
 1
 
 TEXTBOX
-1698
-358
-2070
-376
-·········································································
-15
-0.0
-1
-
-TEXTBOX
-1698
-506
-2081
-524
--------------------------------------------------------------------------
-15
-0.0
-1
-
-TEXTBOX
-1717
-535
-1867
-553
-NÚMERO DE PROMOTORAS:
+1712
+230
+1988
+255
+NÚMERO DE PROMOTORAS DE CADA TIPO:
 11
 0.0
 1
 
 INPUTBOX
-1714
-568
-1865
-628
+1710
+252
+1860
+312
 Número_promotoras_tipo_1
-10.0
+5.0
 1
 0
 Number
 
 INPUTBOX
-1713
-673
-1864
-733
+1867
+252
+2016
+312
 Número_promotoras_tipo_2
-20.0
+5.0
 1
 0
 Number
 
 TEXTBOX
-1881
-569
-2059
-617
-Promotoras tipo 1: generalistas, proyectos de todo tipo
-13
-0.0
-1
-
-TEXTBOX
-1879
-678
-2046
-732
-Promotoras tipo 2: especializadas, enfocadas en proyectos concretos
-13
-0.0
-1
-
-TEXTBOX
-1699
-640
-2068
-658
-·········································································
-15
-0.0
-1
-
-TEXTBOX
-1717
-768
-2040
-804
-Grado de diferenciación entre cada tipo de promotora: 0 = ninguno, 1 = máximo
-13
+1713
+340
+1972
+367
+GRADO DE DIFERENCIACIÓN ENTRE CADA TIPO DE PROMOTORA:
+11
 0.0
 1
 
 SLIDER
-1714
-824
-2048
-857
+1710
+376
+1933
+409
 Diferenciación
 Diferenciación
 0
@@ -2226,21 +2289,11 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-1698
-745
-2070
-763
--------------------------------------------------------------------------
-15
-0.0
-1
-
-TEXTBOX
-1699
-871
-2065
-889
--------------------------------------------------------------------------
+1700
+207
+2524
+225
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 15
 0.0
 1
@@ -2303,7 +2356,7 @@ CHOOSER
 787
 Tipo_visualización_zonas_simuladas
 Tipo_visualización_zonas_simuladas
-"TIPOLOGIA" "ESTANDAR" "TIPOLOGIA_Y_ESTANDAR"
+"TIPOLOGÍA" "ESTÁNDAR" "TIPOLOGÁA_Y_ESTÁNDAR"
 1
 
 BUTTON
@@ -2358,214 +2411,214 @@ NIL
 1
 
 TEXTBOX
-1516
-981
-1683
-1157
+1517
+993
+1685
+1111
 El formato de los datos está reflejado en forma de aptitudes, es decir, los valores de distancia están invertidos y además normalizados a escala 0 - 10000.\n\nMás claro = mayor aptitud\nMás oscuro = menor aptitud
-13
+11
 0.0
 1
 
 MONITOR
-2328
-45
-2484
-98
+2356
+804
+2511
+849
 Edificaciones construidas
 count patches with [modificado = 1]
-17
 1
-13
+1
+11
 
 MONITOR
-2083
-154
-2267
-203
+1712
+1112
+1856
+1157
 Unifamiliares_promotoras_2
 num_constru_uni_p2
 17
 1
-12
+11
 
 MONITOR
-2083
-203
-2267
-252
+1864
+1112
+2015
+1157
 Multifamiliares_promotoras_2
 num_constru_multi_p2
 17
 1
-12
+11
 
 MONITOR
-2083
-275
-2268
-324
+1708
+966
+1860
+1011
 Estándar_alto_promotoras_2
 num_constru_alto_p2
 17
 1
-12
+11
 
 MONITOR
-2083
-324
-2268
-373
+1870
+966
+2031
+1011
 Estándar_medio_promotoras_2
 num_constru_medio_p2
 17
 1
-12
+11
 
 MONITOR
-2083
-373
-2268
-422
+2043
+966
+2197
+1011
 Estándar_bajo_promotoras_2
 num_constru_bajo_p2
 17
 1
-12
+11
 
 MONITOR
-2290
-154
-2484
-203
+1711
+1044
+1855
+1089
 Unifamiliares_promotoras_1
 num_constru_uni_p1
 17
 1
-12
+11
 
 MONITOR
-2290
-203
-2484
-252
+1863
+1044
+2014
+1089
 Multifamiliares_promotoras_1
 num_constru_multi_p1
 17
 1
-12
+11
 
 MONITOR
-2290
-275
-2484
-324
+1709
+892
+1860
+937
 Estándar_alto_promotoras_1
 num_constru_alto_p1
 17
 1
-12
+11
 
 MONITOR
-2290
-324
-2484
-373
+1870
+892
+2032
+937
 Estándar_medio_promotoras_1
 num_constru_medio_p1
 17
 1
-12
+11
 
 MONITOR
-2290
-373
-2484
-422
+2044
+892
+2198
+937
 Estándar_bajo_promotoras_1
 num_constru_bajo_p1
 17
 1
-12
+11
 
 TEXTBOX
-2065
-106
-2511
-124
+1699
+413
+2027
+431
 ----------------------------------------------------------------------------------------
 15
 0.0
 1
 
 TEXTBOX
-2065
-638
-2506
-656
-----------------------------------------------------------------------------------------
+1698
+1015
+2525
+1033
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 15
 0.0
 1
 
 TEXTBOX
-2277
-143
-2292
-649
+2105
+422
+2120
+797
 :\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:
 15
 0.0
 1
 
 TEXTBOX
-2068
-257
-2520
-275
-·······················································································
+2026
+416
+2540
+434
+···································································································
 15
 0.0
 1
 
 TEXTBOX
-2085
-127
-2391
-147
+1819
+866
+2125
+886
 Edificaciones realizadas por cada tipo de promotora:
-13
+11
 0.0
 1
 
 MONITOR
-2291
-454
-2485
-523
-Total promotoras 1
+2042
+1110
+2196
+1155
+Totaledif de promotoras 1
 num_constru_uni_p1 + num_constru_multi_p1
 17
 1
-17
+11
 
 MONITOR
-2083
-455
-2268
-524
-Total promotoras 2
+2043
+1043
+2197
+1088
+Total edif de promotoras 2
 num_constru_uni_p2 + num_constru_multi_p2
 17
 1
-17
+11
 
 TEXTBOX
-2065
-430
-2507
-448
-····························································································
+1698
+603
+2525
+621
+·················································································································································································································································
 15
 0.0
 1
@@ -2576,54 +2629,54 @@ TEXTBOX
 1526
 1197
 Ejecución por puntos de control
-13
+11
 0.0
 1
 
 MONITOR
-2083
-562
-2268
-631
+2218
+965
+2508
+1010
 Ganancias promotora 2
 ganancias_p2 / Número_promotoras_tipo_2
 17
 1
-17
+11
 
 MONITOR
-2291
-560
-2485
-629
+2219
+892
+2509
+937
 Ganancias promotora 1
 ganancias_p1 / Número_promotoras_tipo_1
 17
 1
-17
+11
 
 TEXTBOX
-2064
-534
-2509
-552
-····························································································
+1697
+944
+2526
+962
+···············································································································································································································································
 15
 0.0
 1
 
 PLOT
-2082
-667
-2484
-899
+2218
+1037
+2508
+1157
 Nuevas edificaciones
 Tiempo
 Estandar
 0.0
 5.0
 0.0
-200.0
+50.0
 true
 true
 "" ""
@@ -2632,23 +2685,558 @@ PENS
 "Medio" 1.0 0 -817084 true "" ""
 "Bajo" 1.0 0 -6459832 true "" ""
 
-PLOT
-2082
-922
-2485
-1145
-Edificaciones por municipio
-Municipio
-Cantidad edificada
-1.0
-18.0
-0.0
+INPUTBOX
+1867
+147
+2016
+207
+Unifamiliar_estándar_medio
+250.0
+1
+0
+Number
+
+INPUTBOX
+1710
+148
+1860
+208
+Unifamiliar_estándar_alto
 50.0
-true
-false
-"" ""
-PENS
-"Edificaciones" 1.0 1 -16777216 true "" ""
+1
+0
+Number
+
+INPUTBOX
+2355
+146
+2508
+206
+Multifamiliar_estándar_bajo
+100.0
+1
+0
+Number
+
+TEXTBOX
+1943
+376
+2016
+408
+0 = ninguno\n1 = máximo
+13
+0.0
+1
+
+TEXTBOX
+2038
+228
+2523
+252
+PONDERACIONES DE LAS PREFERENCIAS DE CADA FACTOR PARA CADA TIPO DE EDIFICACIÓN:
+11
+0.0
+1
+
+SLIDER
+1796
+619
+2102
+652
+Distancia_a_urbano_consolidado_unifamiliar_medio
+Distancia_a_urbano_consolidado_unifamiliar_medio
+0
+1
+0.25
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1796
+652
+2102
+685
+Distancia_a_carreteras_unifamiliar_medio
+Distancia_a_carreteras_unifamiliar_medio
+0
+1
+0.25
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1796
+685
+2102
+718
+Distancia_a_transporte_público_unifamiliar_medio
+Distancia_a_transporte_público_unifamiliar_medio
+0
+1
+0.1
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1796
+717
+2102
+750
+Distancia_a_zonas_de_trabajo_unifamiliar_medio
+Distancia_a_zonas_de_trabajo_unifamiliar_medio
+0
+1
+0.25
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+1796
+750
+2102
+783
+Distancia_a_zonas_verdes_unifamiliar_medio
+Distancia_a_zonas_verdes_unifamiliar_medio
+0
+1
+0.15
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+2207
+347
+2513
+380
+Distancia_a_zonas_de_trabajo_multifamiliar_alto
+Distancia_a_zonas_de_trabajo_multifamiliar_alto
+0
+1
+0.2
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+2207
+380
+2513
+413
+Distancia_a_zonas_verdes_multifamiliar_alto
+Distancia_a_zonas_verdes_multifamiliar_alto
+0
+1
+0.3
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+2205
+466
+2511
+499
+Distancia_a_carreteras_multifamiliar_medio
+Distancia_a_carreteras_multifamiliar_medio
+0
+1
+0.3
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+2205
+499
+2511
+532
+Distancia_a_transporte_público_multifamiliar_medio
+Distancia_a_transporte_público_multifamiliar_medio
+0
+1
+0.1
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+2205
+434
+2511
+467
+Distancia_a_urbano_consolidado_multifamiliar_medio
+Distancia_a_urbano_consolidado_multifamiliar_medio
+0
+1
+0.2
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+2207
+315
+2513
+348
+Distancia_a_transporte_público_multifamiliar_alto
+Distancia_a_transporte_público_multifamiliar_alto
+0
+1
+0.05
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+2207
+282
+2513
+315
+Distancia_a_carreteras_multifamiliar_alto
+Distancia_a_carreteras_multifamiliar_alto
+0
+1
+0.25
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+2207
+249
+2513
+282
+Distancia_a_urbano_consolidado_multifamiliar_alto
+Distancia_a_urbano_consolidado_multifamiliar_alto
+0
+1
+0.2
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+2205
+532
+2511
+565
+Distancia_a_zonas_de_trabajo_multifamiliar_medio
+Distancia_a_zonas_de_trabajo_multifamiliar_medio
+0
+1
+0.25
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+2205
+565
+2511
+598
+Distancia_a_zonas_verdes_multifamiliar_medio
+Distancia_a_zonas_verdes_multifamiliar_medio
+0
+1
+0.15
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+2205
+653
+2511
+686
+Distancia_a_carreteras_multifamiliar_bajo
+Distancia_a_carreteras_multifamiliar_bajo
+0
+1
+0.05
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+2205
+686
+2511
+719
+Distancia_a_transporte_público_multifamiliar_bajo
+Distancia_a_transporte_público_multifamiliar_bajo
+0
+1
+0.35
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+2205
+719
+2511
+752
+Distancia_a_zonas_de_trabajo_multifamiliar_bajo
+Distancia_a_zonas_de_trabajo_multifamiliar_bajo
+0
+1
+0.2
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+2205
+620
+2511
+653
+Distancia_a_urbano_consolidado_multifamiliar_bajo
+Distancia_a_urbano_consolidado_multifamiliar_bajo
+0
+1
+0.35
+0.05
+1
+NIL
+HORIZONTAL
+
+SLIDER
+2205
+752
+2511
+785
+Distancia_a_zonas_verdes_multifamiliar_bajo
+Distancia_a_zonas_verdes_multifamiliar_bajo
+0
+1
+0.05
+0.05
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+1714
+128
+2030
+147
+DEMANDA DE EDIFICACIONES DE TIPO UNIFAMILIAR:
+11
+0.0
+1
+
+TEXTBOX
+1414
+18
+1622
+36
+VISUALIZACIÓN DATOS DE ENTRADA
+11
+0.0
+1
+
+TEXTBOX
+2025
+108
+2526
+126
+___________________________________________________________________________________________________________________________________________________________________________________________________________________________
+11
+0.0
+1
+
+TEXTBOX
+2025
+102
+2524
+120
+___________________________________________________________________________________________________________________________________________________________________________________________________________________________
+11
+0.0
+1
+
+TEXTBOX
+2515
+10
+2530
+114
+|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
+11
+0.0
+1
+
+TEXTBOX
+2030
+10
+2045
+113
+|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
+11
+0.0
+1
+
+TEXTBOX
+1698
+784
+2523
+802
+___________________________________________________________________________________________________________________________________________________________________________________________________________________________
+11
+0.0
+1
+
+TEXTBOX
+2064
+288
+2177
+375
+PREFERENCIA DE LOS FACTORES PARA LA CONSTRUCCIÓN DE EDIFICACIONES MULTIFAMILIARES DE ESTÁNDAR ALTO
+11
+0.0
+1
+
+TEXTBOX
+2114
+456
+2205
+613
+PREFERENCIA DE LOS FACTORES PARA LA CONSTRUCCIÓN DE EDIFICACIONES MULTIFAMILIARES DE ESTÁNDAR MEDIO\n
+11
+0.0
+1
+
+TEXTBOX
+2114
+643
+2205
+772
+PREFERENCIA DE LOS FACTORES PARA LA CONSTRUCCIÓN DE EDIFICACIONES MULTIFAMILIARES DE ESTÁNDAR BAJO
+11
+0.0
+1
+
+TEXTBOX
+1710
+459
+1802
+594
+PREFERENCIA DE LOS FACTORES PARA LA CONSTRUCCIÓN DE EDIFICACIONES UNIFAMILIARES DE ESTÁNDAR ALTO
+11
+0.0
+1
+
+TEXTBOX
+1711
+640
+1800
+782
+PREFERENCIA DE LOS FACTORES PARA LA CONSTRUCCIÓN DE EDIFICACIONES UNIFAMILIARES DE ESTÁNDAR MEDIO
+11
+0.0
+1
+
+TEXTBOX
+2031
+113
+2530
+131
+* * * * * * * * *  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *  * * * * * *
+11
+0.0
+1
+
+TEXTBOX
+2026
+11
+2041
+116
+*\n*\n*\n*\n*\n*\n*\n*\n*\n*
+11
+0.0
+1
+
+TEXTBOX
+2517
+11
+2533
+122
+*\n*\n*\n*\n*\n*\n*\n*\n*\n*
+11
+0.0
+1
+
+TEXTBOX
+1700
+844
+2523
+862
+__________________________________________________________________________________________________________________________________________________
+11
+0.0
+1
+
+TEXTBOX
+2047
+795
+2079
+857
+|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
+11
+0.0
+1
+
+TEXTBOX
+2271
+869
+2446
+897
+Ganancia de cada tipo de promotora
+11
+0.0
+1
+
+TEXTBOX
+2029
+1025
+2044
+1171
+|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
+11
+0.0
+1
+
+TEXTBOX
+2206
+795
+2221
+1171
+|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
+11
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
