@@ -752,7 +752,7 @@ to crear_promotoras
 
   ask promotoras1 [
 
-    set radio_busqueda (10 + (Diferenciación * 30)) ;; el radio de busqueda es un valor fijo (10 píxeles - 250m) mas una cantidad en funcion de la diferenciación que haya escogido el usuario
+    set radio_busqueda Radio_de_búsqueda + (Diferenciación * 2 * (Radio_de_búsqueda)) ;; el radio de busqueda es un valor fijo (10 píxeles - 250m) mas una cantidad en funcion de la diferenciación que haya escogido el usuario
     set shape "circle"  ;; la forma que toma en el espacio es un ciruclo
     set color violet    ;; color violeta
     set size radio_busqueda   ;; su tamaño es consecuencia directa de su radio de busqueda (buffer)
@@ -767,7 +767,7 @@ to crear_promotoras
 
   ask promotoras2 [
 
-    set radio_busqueda (10 + (precision (Diferenciación * 10) 0))
+    set radio_busqueda (Radio_de_búsqueda + (precision (Diferenciación * Radio_de_búsqueda) 0))
     set shape "circle"
     set color red
     set size radio_busqueda
@@ -1319,18 +1319,20 @@ end
 
 to resumen_municipios
 
-file-open (word "simulacion_cada_municipio.csv")
-file-print (word "COD_MUN;NOM_MUN;TOTAL_PIX;SELECTED_PIX;PERCENTAGE_SELECTED;NUM_MULTI;NUM_UNI;NUM_EST_ALTO;NUM_EST_MEDIO;NUM_EST_BAJO" )
+  if (file-exists? "simulacion_cada_municipio.csv") [file-delete "simulacion_cada_municipio.csv"]
 
-let mun 1
+  file-open (word "simulacion_cada_municipio.csv")
+  file-print (word "COD_MUN;NOM_MUN;TOTAL_PIX;SELECTED_PIX;PERCENTAGE_SELECTED;NUM_MULTI;NUM_UNI;NUM_EST_ALTO;NUM_EST_MEDIO;NUM_EST_BAJO" )
 
-while [mun < 19 ][
+  let mun 1
 
-  let patches_municipio count patches with [area_estudio = mun]
-  let patches_selecc    count patches with [(area_estudio = mun) and (modificado = 1)]
-  let nombre_mun ""
+  while [mun < 19 ][
 
-  ifelse   (mun = 1) [set nombre_mun "28002;Ajalvir" ]
+    let patches_municipio count patches with [area_estudio = mun]
+    let patches_selecc    count patches with [(area_estudio = mun) and (modificado = 1)]
+    let nombre_mun ""
+
+    ifelse   (mun = 1) [set nombre_mun "28002;Ajalvir" ]
     [ ifelse   (mun = 2) [set nombre_mun "28005;Alcala  de Henares" ]
       [ ifelse   (mun = 3) [set nombre_mun "28012;Anchuelo" ]
         [ ifelse   (mun = 4) [set nombre_mun "28032;Camarma de Esteruelas" ]
@@ -1350,17 +1352,17 @@ while [mun < 19 ][
                                     [ if   (mun = 18) [set nombre_mun "28172;Villalbilla" ]
     ]]]]]]]]]]]]]]]]]
 
-file-print (word  nombre_mun ";" patches_municipio ";" patches_selecc ";" precision (patches_selecc * 100 / patches_municipio ) 2 ";"
-            count patches with [(area_estudio = mun) and (modificado = 1) and (tipo_viviendas = 2)] ";"
-            count patches with [(area_estudio = mun) and (modificado = 1) and (tipo_viviendas = 3)] ";"
-            count patches with [(area_estudio = mun) and (modificado = 1) and (estandar = 1)] ";"
-            count patches with [(area_estudio = mun) and (modificado = 1) and (estandar = 2)] ";"
-            count patches with [(area_estudio = mun) and (modificado = 1) and (estandar = 3)] ";")
+    file-print (word  nombre_mun ";" patches_municipio ";" patches_selecc ";" precision (patches_selecc * 100 / patches_municipio ) 2 ";"
+      count patches with [(area_estudio = mun) and (modificado = 1) and (tipo_viviendas = 2)] ";"
+      count patches with [(area_estudio = mun) and (modificado = 1) and (tipo_viviendas = 3)] ";"
+      count patches with [(area_estudio = mun) and (modificado = 1) and (estandar = 1)] ";"
+      count patches with [(area_estudio = mun) and (modificado = 1) and (estandar = 2)] ";"
+      count patches with [(area_estudio = mun) and (modificado = 1) and (estandar = 3)] ";")
 
- set mun mun + 1
-]
+    set mun mun + 1
+  ]
 
-file-close
+  file-close
 
 end
 
@@ -1526,7 +1528,7 @@ TEXTBOX
 121
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 3
-25.0
+15.0
 1
 
 TEXTBOX
@@ -1534,7 +1536,7 @@ TEXTBOX
 120
 2512
 138
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 3
 15.0
 1
@@ -1634,10 +1636,10 @@ NIL
 1
 
 BUTTON
-1337
-506
-1507
-539
+1338
+507
+1508
+540
 Mostrar la zonificación legal
 mostrar_zonificacion
 NIL
@@ -1791,10 +1793,10 @@ NIL
 1
 
 BUTTON
-1337
-540
-1507
-573
+1338
+539
+1508
+572
 Mostrar las zonas edificables
 mostrar_zonas_urbanizables
 NIL
@@ -1933,7 +1935,7 @@ INPUTBOX
 1860
 107
 Número_de_iteraciones
-5.0
+2.0
 1
 0
 Number
@@ -1997,9 +1999,9 @@ TEXTBOX
 
 TEXTBOX
 2024
-10
+119
 2039
-425
+217
 |\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
 11
 0.0
@@ -2107,9 +2109,9 @@ Cada iteración representa un ciclo de construcción en el que se suple toda la 
 
 SLIDER
 1796
-437
+435
 2102
-470
+468
 Distancia_a_urbano_consolidado_unifamiliar_alto
 Distancia_a_urbano_consolidado_unifamiliar_alto
 0
@@ -2122,9 +2124,9 @@ HORIZONTAL
 
 SLIDER
 1796
-469
+467
 2102
-502
+500
 Distancia_a_carreteras_unifamiliar_alto
 Distancia_a_carreteras_unifamiliar_alto
 0
@@ -2137,9 +2139,9 @@ HORIZONTAL
 
 SLIDER
 1796
-501
+499
 2102
-534
+532
 Distancia_a_transporte_público_unifamiliar_alto
 Distancia_a_transporte_público_unifamiliar_alto
 0
@@ -2152,9 +2154,9 @@ HORIZONTAL
 
 SLIDER
 1796
-534
+532
 2102
-567
+565
 Distancia_a_zonas_de_trabajo_unifamiliar_alto
 Distancia_a_zonas_de_trabajo_unifamiliar_alto
 0
@@ -2167,14 +2169,14 @@ HORIZONTAL
 
 SLIDER
 1796
-567
+565
 2102
-600
+598
 Distancia_a_zonas_verdes_unifamiliar_alto
 Distancia_a_zonas_verdes_unifamiliar_alto
 0
 1
-0.35
+0.0
 0.05
 1
 NIL
@@ -2222,19 +2224,19 @@ TEXTBOX
 1
 
 TEXTBOX
-1699
-318
-2026
-336
+1877
+298
+2110
+316
 ---------------------------------------------------------------------------------------------------
 15
 0.0
 1
 
 TEXTBOX
-1712
+1716
 230
-1988
+1862
 255
 NÚMERO DE PROMOTORAS DE CADA TIPO:
 11
@@ -2242,47 +2244,47 @@ NÚMERO DE PROMOTORAS DE CADA TIPO:
 1
 
 INPUTBOX
-1710
-252
-1860
-312
+1712
+267
+1862
+327
 Número_promotoras_tipo_1
-5.0
+10.0
 1
 0
 Number
 
 INPUTBOX
-1867
-252
-2016
-312
+1712
+350
+1861
+410
 Número_promotoras_tipo_2
-5.0
+10.0
 1
 0
 Number
 
 TEXTBOX
-1713
-340
-1972
-367
+1891
+227
+2072
+255
 GRADO DE DIFERENCIACIÓN ENTRE CADA TIPO DE PROMOTORA:
 11
 0.0
 1
 
 SLIDER
-1710
-376
-1933
-409
+1888
+262
+2018
+295
 Diferenciación
 Diferenciación
 0
 1
-0.5
+1.0
 0.1
 1
 NIL
@@ -2544,7 +2546,7 @@ num_constru_bajo_p1
 TEXTBOX
 1699
 413
-2027
+2108
 431
 ----------------------------------------------------------------------------------------
 15
@@ -2563,7 +2565,7 @@ TEXTBOX
 
 TEXTBOX
 2105
-422
+419
 2120
 797
 :\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:\n:
@@ -2572,9 +2574,9 @@ TEXTBOX
 1
 
 TEXTBOX
-2026
+2108
 416
-2540
+2525
 434
 ···································································································
 15
@@ -2593,9 +2595,9 @@ Edificaciones realizadas por cada tipo de promotora:
 
 MONITOR
 2042
-1110
+1043
 2196
-1155
+1088
 Totaledif de promotoras 1
 num_constru_uni_p1 + num_constru_multi_p1
 17
@@ -2603,25 +2605,15 @@ num_constru_uni_p1 + num_constru_multi_p1
 11
 
 MONITOR
-2043
-1043
-2197
-1088
+2042
+1110
+2196
+1155
 Total edif de promotoras 2
 num_constru_uni_p2 + num_constru_multi_p2
 17
 1
 11
-
-TEXTBOX
-1698
-603
-2525
-621
-·················································································································································································································································
-15
-0.0
-1
 
 TEXTBOX
 1337
@@ -2666,10 +2658,10 @@ TEXTBOX
 1
 
 PLOT
-2218
-1037
-2508
-1157
+2212
+1030
+2517
+1166
 Nuevas edificaciones
 Tiempo
 Estandar
@@ -2719,20 +2711,20 @@ Multifamiliar_estándar_bajo
 Number
 
 TEXTBOX
-1943
-376
-2016
-408
+2029
+261
+2102
+293
 0 = ninguno\n1 = máximo
 13
 0.0
 1
 
 TEXTBOX
-2038
-228
-2523
-252
+2118
+224
+2505
+251
 PONDERACIONES DE LAS PREFERENCIAS DE CADA FACTOR PARA CADA TIPO DE EDIFICACIÓN:
 11
 0.0
@@ -2740,9 +2732,9 @@ PONDERACIONES DE LAS PREFERENCIAS DE CADA FACTOR PARA CADA TIPO DE EDIFICACIÓN:
 
 SLIDER
 1796
-619
+617
 2102
-652
+650
 Distancia_a_urbano_consolidado_unifamiliar_medio
 Distancia_a_urbano_consolidado_unifamiliar_medio
 0
@@ -2755,9 +2747,9 @@ HORIZONTAL
 
 SLIDER
 1796
-652
+650
 2102
-685
+683
 Distancia_a_carreteras_unifamiliar_medio
 Distancia_a_carreteras_unifamiliar_medio
 0
@@ -2770,14 +2762,14 @@ HORIZONTAL
 
 SLIDER
 1796
-685
+683
 2102
-718
+716
 Distancia_a_transporte_público_unifamiliar_medio
 Distancia_a_transporte_público_unifamiliar_medio
 0
 1
-0.1
+0.5
 0.05
 1
 NIL
@@ -2785,14 +2777,14 @@ HORIZONTAL
 
 SLIDER
 1796
-717
+715
 2102
-750
+748
 Distancia_a_zonas_de_trabajo_unifamiliar_medio
 Distancia_a_zonas_de_trabajo_unifamiliar_medio
 0
 1
-0.25
+0.05
 0.05
 1
 NIL
@@ -2800,9 +2792,9 @@ HORIZONTAL
 
 SLIDER
 1796
-750
+748
 2102
-783
+781
 Distancia_a_zonas_verdes_unifamiliar_medio
 Distancia_a_zonas_verdes_unifamiliar_medio
 0
@@ -2927,7 +2919,7 @@ Distancia_a_urbano_consolidado_multifamiliar_alto
 Distancia_a_urbano_consolidado_multifamiliar_alto
 0
 1
-0.2
+0.25
 0.05
 1
 NIL
@@ -3109,10 +3101,10 @@ ________________________________________________________________________________
 1
 
 TEXTBOX
-2064
-288
-2177
-375
+2116
+271
+2211
+396
 PREFERENCIA DE LOS FACTORES PARA LA CONSTRUCCIÓN DE EDIFICACIONES MULTIFAMILIARES DE ESTÁNDAR ALTO
 11
 0.0
@@ -3140,9 +3132,9 @@ PREFERENCIA DE LOS FACTORES PARA LA CONSTRUCCIÓN DE EDIFICACIONES MULTIFAMILIAR
 
 TEXTBOX
 1710
-459
+457
 1802
-594
+592
 PREFERENCIA DE LOS FACTORES PARA LA CONSTRUCCIÓN DE EDIFICACIONES UNIFAMILIARES DE ESTÁNDAR ALTO
 11
 0.0
@@ -3150,9 +3142,9 @@ PREFERENCIA DE LOS FACTORES PARA LA CONSTRUCCIÓN DE EDIFICACIONES UNIFAMILIARES
 
 TEXTBOX
 1711
-640
+638
 1800
-782
+765
 PREFERENCIA DE LOS FACTORES PARA LA CONSTRUCCIÓN DE EDIFICACIONES UNIFAMILIARES DE ESTÁNDAR MEDIO
 11
 0.0
@@ -3234,6 +3226,77 @@ TEXTBOX
 2221
 1171
 |\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
+11
+0.0
+1
+
+INPUTBOX
+1887
+349
+2018
+409
+Radio_de_búsqueda
+50.0
+1
+0
+Number
+
+TEXTBOX
+2104
+215
+2119
+426
+|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
+11
+0.0
+1
+
+TEXTBOX
+1873
+216
+1888
+424
+|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
+11
+0.0
+1
+
+TEXTBOX
+1889
+320
+2079
+338
+RADIO DE BÚSQUEDA (EN PÍXELES):
+11
+0.0
+1
+
+TEXTBOX
+2027
+372
+2094
+390
+1 píxel = 25m
+11
+0.0
+1
+
+TEXTBOX
+1698
+333
+1876
+351
+···············································
+11
+0.0
+1
+
+TEXTBOX
+1701
+604
+2520
+622
+············································································································································································································
 11
 0.0
 1
