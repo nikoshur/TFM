@@ -14,6 +14,7 @@ Open the file using the aplication, follow the indications below.
 The model works with high amount of data as input. This makes impossible to run the model with the default configuration of NetLogo since it's capped to use a maximum of 1 gb of RAM. In order to to surpass this limit, it is needed to modify certain .cfg extension files related to the NetLogo folder. 
 
 In Windows this files are usually (depending on your installation location) located at: C:\Program Files\NetLogo 6.2.0\app
+
 In MAC this files are usually (depending on your installation location) located at: /Application/NetLogo 6.2.0/NetLogo 6.2.0.app/Contents/Java 
 
 It is needed to change the 1024 value of all .cfg files to a larger amount, recommended 4096 or superior.
