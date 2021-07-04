@@ -1,6 +1,7 @@
 # Simulation of the house developers activity on the Henares Corridor
 ## Summary
 
+This is an Agent Based Model developed in NetLogo platform that aims to simulate the house developers activity in the Corridor of Henares. The model requieres as inputs numerous information about the studied zone. This information is classified in: land constrictions (related to urban plans zonning), land characterization, land price and land classification.
 ## Installation
 
 Based on the aplication NetLogo version 6.2.0
