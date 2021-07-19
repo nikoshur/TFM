@@ -131,7 +131,8 @@ patches-own [
 
   disponible ;; variable que define si es posible construir en el pixel o no
   modificado ;; variable que define si el pixel ha sido modificado o no
-  estandar ;; variable que define el estandar de la edificacion
+  tipologia ;; variable que define la tipologia de la nueva edificacion
+  estandar ;; variable que define el estandar de la nueva edificacion
 
   ;; valores de aptitud de cada tipo de edificacion para las promotoras tipo 1
   aptitud_multi_alto_p1
@@ -1108,6 +1109,7 @@ to construir
         ask patch-here [set disponible 0]
         ask patch-here [set tipo_viviendas 3]
         ask patch-here [set estandar 1]
+        ask patch-here [set tipologia 5]
 
         ;; resta de la demanda el que se ha construido
         set demanda_unifamiliar_alto (demanda_unifamiliar_alto - 1)
@@ -1132,6 +1134,7 @@ to construir
         ask patch-here [set disponible 0]
         ask patch-here [set tipo_viviendas 3]
         ask patch-here [set estandar 2]
+        ask patch-here [set tipologia 5]
 
         set demanda_unifamiliar_medio (demanda_unifamiliar_medio - 1)
         set intentos (intentos - 1)
@@ -1147,6 +1150,7 @@ to construir
         ask patch-here [set disponible 0]
         ask patch-here [set tipo_viviendas 2]
         ask patch-here [set estandar 1]
+        ask patch-here [set tipologia 4]
 
         set demanda_multifamiliar_alto (demanda_multifamiliar_alto - 1)
         set intentos (intentos - 1)
@@ -1162,6 +1166,7 @@ to construir
         ask patch-here [set disponible 0]
         ask patch-here [set tipo_viviendas 2]
         ask patch-here [set estandar 2]
+        ask patch-here [set tipologia 4]
 
         set demanda_multifamiliar_medio (demanda_multifamiliar_medio - 1)
         set intentos (intentos - 1)
@@ -1177,6 +1182,7 @@ to construir
         ask patch-here [set disponible 0]
         ask patch-here [set tipo_viviendas 2]
         ask patch-here [set estandar 3]
+        ask patch-here [set tipologia 4]
 
         set demanda_multifamiliar_bajo (demanda_multifamiliar_bajo - 1)
         set intentos (intentos - 1)
@@ -1203,6 +1209,7 @@ to construir
         ask patch-here [set disponible 0]
         ask patch-here [set tipo_viviendas 3]
         ask patch-here [set estandar 1]
+        ask patch-here [set tipologia 5]
 
         set demanda_unifamiliar_alto (demanda_unifamiliar_alto - 1)
         set intentos (intentos - 1)
@@ -1218,6 +1225,7 @@ to construir
         ask patch-here [set disponible 0]
         ask patch-here [set tipo_viviendas 3]
         ask patch-here [set estandar 2]
+        ask patch-here [set tipologia 5]
 
         set demanda_unifamiliar_medio (demanda_unifamiliar_medio - 1)
         set intentos (intentos - 1)
@@ -1233,6 +1241,7 @@ to construir
         ask patch-here [set disponible 0]
         ask patch-here [set tipo_viviendas 2]
         ask patch-here [set estandar 1]
+        ask patch-here [set tipologia 4]
 
         set demanda_multifamiliar_alto (demanda_multifamiliar_alto - 1)
         set intentos (intentos - 1)
@@ -1248,6 +1257,7 @@ to construir
         ask patch-here [set disponible 0]
         ask patch-here [set tipo_viviendas 2]
         ask patch-here [set estandar 2]
+        ask patch-here [set tipologia 4]
 
         set demanda_multifamiliar_medio (demanda_multifamiliar_medio - 1)
         set intentos (intentos - 1)
@@ -1263,6 +1273,7 @@ to construir
         ask patch-here [set disponible 0]
         ask patch-here [set tipo_viviendas 2]
         ask patch-here [set estandar 3]
+        ask patch-here [set tipologia 4]
 
         set demanda_multifamiliar_bajo (demanda_multifamiliar_bajo - 1)
         set intentos (intentos - 1)
@@ -1306,6 +1317,7 @@ to guardar_simulacion
 
   gis:store-dataset (gis:patch-dataset modificado) (word "edificaciones_simuladas.asc")
   gis:store-dataset (gis:patch-dataset estandar)  (word "estandar_simulado.asc")
+  gis:store-dataset (gis:patch-dataset tipologia)  (word "tipología_simulada.asc")
   gis:store-dataset (gis:patch-dataset tipo_viviendas)  (word "tipologia_resultado.asc")
   resumen_municipios
 
@@ -1743,7 +1755,7 @@ INPUTBOX
 2188
 206
 Multifamiliar_estándar_alto
-50.0
+150.0
 1
 0
 Number
@@ -1935,7 +1947,7 @@ INPUTBOX
 1860
 107
 Número_de_iteraciones
-2.0
+5.0
 1
 0
 Number
@@ -2032,7 +2044,7 @@ TEXTBOX
 818
 1921
 837
-MONOTORIZACIÓN
+MONITORIZACIÓN
 11
 0.0
 1
@@ -2116,7 +2128,7 @@ Distancia_a_urbano_consolidado_unifamiliar_alto
 Distancia_a_urbano_consolidado_unifamiliar_alto
 0
 1
-0.1
+0.45
 0.05
 1
 NIL
@@ -2131,7 +2143,7 @@ Distancia_a_carreteras_unifamiliar_alto
 Distancia_a_carreteras_unifamiliar_alto
 0
 1
-0.35
+0.45
 0.05
 1
 NIL
@@ -2161,7 +2173,7 @@ Distancia_a_zonas_de_trabajo_unifamiliar_alto
 Distancia_a_zonas_de_trabajo_unifamiliar_alto
 0
 1
-0.2
+1.0
 0.05
 1
 NIL
@@ -2176,7 +2188,7 @@ Distancia_a_zonas_verdes_unifamiliar_alto
 Distancia_a_zonas_verdes_unifamiliar_alto
 0
 1
-0.0
+0.2
 0.05
 1
 NIL
@@ -2188,7 +2200,7 @@ INPUTBOX
 2348
 206
 Multifamiliar_estándar_medio
-150.0
+400.0
 1
 0
 Number
@@ -2249,7 +2261,7 @@ INPUTBOX
 1862
 327
 Número_promotoras_tipo_1
-10.0
+5.0
 1
 0
 Number
@@ -2359,7 +2371,7 @@ CHOOSER
 Tipo_visualización_zonas_simuladas
 Tipo_visualización_zonas_simuladas
 "TIPOLOGÍA" "ESTÁNDAR" "TIPOLOGÁA_Y_ESTÁNDAR"
-1
+0
 
 BUTTON
 1336
@@ -2658,8 +2670,8 @@ TEXTBOX
 1
 
 PLOT
-2212
-1030
+2219
+1032
 2517
 1166
 Nuevas edificaciones
@@ -2683,7 +2695,7 @@ INPUTBOX
 2016
 207
 Unifamiliar_estándar_medio
-250.0
+500.0
 1
 0
 Number
@@ -2694,7 +2706,7 @@ INPUTBOX
 1860
 208
 Unifamiliar_estándar_alto
-50.0
+200.0
 1
 0
 Number
@@ -2705,7 +2717,7 @@ INPUTBOX
 2508
 206
 Multifamiliar_estándar_bajo
-100.0
+150.0
 1
 0
 Number
@@ -2769,7 +2781,7 @@ Distancia_a_transporte_público_unifamiliar_medio
 Distancia_a_transporte_público_unifamiliar_medio
 0
 1
-0.5
+0.25
 0.05
 1
 NIL
@@ -2784,7 +2796,7 @@ Distancia_a_zonas_de_trabajo_unifamiliar_medio
 Distancia_a_zonas_de_trabajo_unifamiliar_medio
 0
 1
-0.05
+0.15
 0.05
 1
 NIL
@@ -2814,7 +2826,7 @@ Distancia_a_zonas_de_trabajo_multifamiliar_alto
 Distancia_a_zonas_de_trabajo_multifamiliar_alto
 0
 1
-0.2
+0.15
 0.05
 1
 NIL
@@ -2829,7 +2841,7 @@ Distancia_a_zonas_verdes_multifamiliar_alto
 Distancia_a_zonas_verdes_multifamiliar_alto
 0
 1
-0.3
+0.25
 0.05
 1
 NIL
@@ -2889,7 +2901,7 @@ Distancia_a_transporte_público_multifamiliar_alto
 Distancia_a_transporte_público_multifamiliar_alto
 0
 1
-0.05
+0.1
 0.05
 1
 NIL
@@ -3009,7 +3021,7 @@ Distancia_a_urbano_consolidado_multifamiliar_bajo
 Distancia_a_urbano_consolidado_multifamiliar_bajo
 0
 1
-0.35
+0.25
 0.05
 1
 NIL
@@ -3236,7 +3248,7 @@ INPUTBOX
 2018
 409
 Radio_de_búsqueda
-50.0
+20.0
 1
 0
 Number
