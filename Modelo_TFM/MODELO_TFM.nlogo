@@ -551,8 +551,8 @@ to establecer_ponderaciones
   ;; ajuste de la ponderacion que hace cada tipo de promotor. Un ajuste realiza una homogeneización de las preferencias
   ;; promotora 1, mientras que el otro realza las preferencias con las ponderaciones mas altas, y reduce aquellas a las que
   ;; se le ha dado menor importancia
-  let ajuste_p1 (1.1 - Diferenciación)
-  let ajuste_p2 (1.1 + Diferenciación)
+  let ajuste_p1 (0.5)
+  let ajuste_p2 (1.5)
 
   ;·························································································
 
@@ -753,12 +753,12 @@ to crear_promotoras
 
   ask promotoras1 [
 
-    set radio_busqueda Radio_de_búsqueda + (Diferenciación * 2 * (Radio_de_búsqueda)) ;; el radio de busqueda es un valor fijo (10 píxeles - 250m) mas una cantidad en funcion de la diferenciación que haya escogido el usuario
+    set radio_busqueda Radio_de_búsqueda + (precision (Radio_de_búsqueda / 3) 0) ;; el radio de busqueda es un valor fijo (10 píxeles - 250m) mas una cantidad en funcion de la diferenciación que haya escogido el usuario
     set shape "circle"  ;; la forma que toma en el espacio es un ciruclo
     set color violet    ;; color violeta
     set size radio_busqueda   ;; su tamaño es consecuencia directa de su radio de busqueda (buffer)
     set intentos 0 ;; establece los intentos iniciales a 0
-    set adaptacion precision ((10 + (10 * Diferenciación)) / 5) 0 ;; establece la adaptacion en funcion de la diferenciación, es el numero de veces que intenta construir lo que quiere
+    set adaptacion 3 ;; establece la adaptacion en funcion de la diferenciación, es el numero de veces que intenta construir lo que quiere
     set reinicios 0 ;; solo para evaluar errores de adaptacion
   ]
 
@@ -768,12 +768,12 @@ to crear_promotoras
 
   ask promotoras2 [
 
-    set radio_busqueda (Radio_de_búsqueda + (precision (Diferenciación * Radio_de_búsqueda) 0))
+    set radio_busqueda Radio_de_búsqueda - (precision (Radio_de_búsqueda / 3) 0)
     set shape "circle"
     set color red
     set size radio_busqueda
     set intentos 0
-    set adaptacion precision ((10 + (20 * Diferenciación)) / 5) 0
+    set adaptacion 6
     set reinicios 0
   ]
 
@@ -1824,7 +1824,7 @@ NIL
 BUTTON
 1335
 799
-1688
+1685
 843
 Mostrar edificación simulada
 mostrar_zonas_simuladas Tipo_visualización_zonas_simuladas
@@ -1849,9 +1849,9 @@ MUNICIPIOS:\n\n01) Ajalvir\n02) Alcala  de Henares\n03) Anchuelo\n04) Camarma de
 1
 
 TEXTBOX
-1515
+1517
 510
-1670
+1672
 565
 URBANO (azul)\nURBANIZABLE (verde)\nNO URBANIZABLE (gris oscuro)\nSIST.GENERALES (naranja)
 11
@@ -1859,10 +1859,10 @@ URBANO (azul)\nURBANIZABLE (verde)\nNO URBANIZABLE (gris oscuro)\nSIST.GENERALES
 1
 
 TEXTBOX
-1513
-612
-1615
-665
+1517
+615
+1619
+668
 CARA (naranja)\nMEDIA (amarillo)\nBARATA (verde)
 11
 0.0
@@ -1888,7 +1888,7 @@ NIL
 BUTTON
 1485
 696
-1686
+1685
 732
 Mostrar el estándar de cada edificación
 mostrar_viviendas_por_precios
@@ -1953,10 +1953,10 @@ Número_de_iteraciones
 Number
 
 BUTTON
-1332
-880
-1502
-926
+1336
+877
+1506
+923
 Clasificación de las viviendas
 mostrar_tipo_viviendas
 NIL
@@ -1980,9 +1980,9 @@ INICIALIZACIÓN DEL MODELO\n(¡REQUERIDO ANTES DE EJECUTAR EL MODELO!)
 1
 
 TEXTBOX
-1509
+1518
 879
-1659
+1668
 927
 VACANTE (verde)\nMULTIFAMILIAR (azul)\nUNIFAMILIAR (naranja)
 11
@@ -2011,9 +2011,9 @@ TEXTBOX
 
 TEXTBOX
 2024
-119
+117
 2039
-217
+423
 |\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
 11
 0.0
@@ -2128,7 +2128,7 @@ Distancia_a_urbano_consolidado_unifamiliar_alto
 Distancia_a_urbano_consolidado_unifamiliar_alto
 0
 1
-0.45
+0.2
 0.05
 1
 NIL
@@ -2236,71 +2236,36 @@ TEXTBOX
 1
 
 TEXTBOX
-1877
-298
-2110
-316
----------------------------------------------------------------------------------------------------
-15
-0.0
-1
-
-TEXTBOX
-1716
-230
-1862
-255
+1713
+227
+1928
+252
 NÚMERO DE PROMOTORAS DE CADA TIPO:
 11
 0.0
 1
 
 INPUTBOX
-1712
-267
-1862
-327
+1710
+249
+1860
+309
 Número_promotoras_tipo_1
-5.0
-1
-0
-Number
-
-INPUTBOX
-1712
-350
-1861
-410
-Número_promotoras_tipo_2
 10.0
 1
 0
 Number
 
-TEXTBOX
-1891
-227
-2072
-255
-GRADO DE DIFERENCIACIÓN ENTRE CADA TIPO DE PROMOTORA:
-11
-0.0
+INPUTBOX
+1867
+248
+2015
+308
+Número_promotoras_tipo_2
+10.0
 1
-
-SLIDER
-1888
-262
-2018
-295
-Diferenciación
-Diferenciación
 0
-1
-1.0
-0.1
-1
-NIL
-HORIZONTAL
+Number
 
 TEXTBOX
 1700
@@ -2366,7 +2331,7 @@ NIL
 CHOOSER
 1336
 742
-1687
+1685
 787
 Tipo_visualización_zonas_simuladas
 Tipo_visualización_zonas_simuladas
@@ -2426,9 +2391,9 @@ NIL
 
 TEXTBOX
 1517
-993
+994
 1685
-1111
+1112
 El formato de los datos está reflejado en forma de aptitudes, es decir, los valores de distancia están invertidos y además normalizados a escala 0 - 10000.\n\nMás claro = mayor aptitud\nMás oscuro = menor aptitud
 11
 0.0
@@ -2723,17 +2688,7 @@ Multifamiliar_estándar_bajo
 Number
 
 TEXTBOX
-2029
-261
-2102
-293
-0 = ninguno\n1 = máximo
-13
-0.0
-1
-
-TEXTBOX
-2118
+2034
 224
 2505
 251
@@ -2818,10 +2773,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-2207
-347
-2513
-380
+2204
+346
+2510
+379
 Distancia_a_zonas_de_trabajo_multifamiliar_alto
 Distancia_a_zonas_de_trabajo_multifamiliar_alto
 0
@@ -2833,10 +2788,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-2207
-380
-2513
-413
+2204
+379
+2510
+412
 Distancia_a_zonas_verdes_multifamiliar_alto
 Distancia_a_zonas_verdes_multifamiliar_alto
 0
@@ -2893,10 +2848,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-2207
-315
-2513
-348
+2204
+314
+2510
+347
 Distancia_a_transporte_público_multifamiliar_alto
 Distancia_a_transporte_público_multifamiliar_alto
 0
@@ -2908,10 +2863,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-2207
-282
-2513
-315
+2204
+281
+2510
+314
 Distancia_a_carreteras_multifamiliar_alto
 Distancia_a_carreteras_multifamiliar_alto
 0
@@ -2923,10 +2878,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-2207
-249
-2513
-282
+2204
+248
+2510
+281
 Distancia_a_urbano_consolidado_multifamiliar_alto
 Distancia_a_urbano_consolidado_multifamiliar_alto
 0
@@ -3113,10 +3068,10 @@ ________________________________________________________________________________
 1
 
 TEXTBOX
-2116
-271
-2211
-396
+2066
+286
+2181
+411
 PREFERENCIA DE LOS FACTORES PARA LA CONSTRUCCIÓN DE EDIFICACIONES MULTIFAMILIARES DE ESTÁNDAR ALTO
 11
 0.0
@@ -3243,62 +3198,32 @@ TEXTBOX
 1
 
 INPUTBOX
-1887
-349
-2018
-409
+1711
+353
+1913
+413
 Radio_de_búsqueda
-20.0
+50.0
 1
 0
 Number
 
 TEXTBOX
-2104
-215
-2119
-426
-|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
+1714
+331
+1925
+350
+RADIO DE BÚSQUEDA BASE (EN PÍXELES):
 11
 0.0
 1
 
 TEXTBOX
-1873
-216
-1888
-424
-|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
-11
-0.0
-1
-
-TEXTBOX
-1889
-320
-2079
-338
-RADIO DE BÚSQUEDA (EN PÍXELES):
-11
-0.0
-1
-
-TEXTBOX
-2027
-372
-2094
-390
+1928
+374
+1995
+392
 1 píxel = 25m
-11
-0.0
-1
-
-TEXTBOX
-1698
-333
-1876
-351
-···············································
 11
 0.0
 1
@@ -3309,6 +3234,16 @@ TEXTBOX
 2520
 622
 ············································································································································································································
+11
+0.0
+1
+
+TEXTBOX
+1699
+314
+2030
+332
+---------------------------------------------------------------------------------------------------
 11
 0.0
 1
